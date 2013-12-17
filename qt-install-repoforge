@@ -1,0 +1,110 @@
+#!/bin/bash
+# Copyright (C) 2009-2013 Eric Shubert <eric@datamatters.us>
+#
+# script to install/upgrade repoforge repository for a QMailToaster host
+######################################################################
+# Change Log
+# 11/24/13 shubes - tailored for new QMailToaster scripts
+#  9/23/13 shubes - modified for Centos 6, changed i386 to i686
+#  4/02/12 shubes - modified for new repoforge.org changes
+#  5/27/11 shubes - leave rpmforge repo enabled, since it's safe now
+#  7/29/10 shubes - modified for changed url and spec format
+#  8/28/08 written by Eric 'shubes' <ejs@shubes.net>
+######################################################################
+
+######################################################################
+# Figure out which version/release is the latest available
+#
+a2_determine_current_version(){
+
+echo "$me $myver - getting version of the latest $PKGNAME ..."
+
+SPECFILE=https://raw.github.com/repoforge/rpms/master/specs/$PKGNAME/$PKGNAME.spec
+
+wget -q -O $tempfile $SPECFILE
+
+if [ $? != "0" ]; then
+  echo "$me - $SPECFILE not found, please try again later."
+  exit 1
+fi
+
+verstring=$(grep --max-count=1 "^Version: " $tempfile)
+version=${verstring#Version: }
+relstring=$(grep --max-count=1 "^Release: " $tempfile)
+relstring=${relstring#Release: }
+release=${relstring%\%\{?dist\}}
+}
+
+######################################################################
+# Install the rpmforge-release package 'manually'
+#
+a5_install_repoforge(){
+
+b54_check_whatami
+
+# we need to put the rpm in a tempfile in case of web redirection
+wget -O $tempfile "http://pkgs.repoforge.org/rpmforge-release/$PKGNAME-$version-$release.el${OSVER%.*}.rf.$QTARCH.rpm"
+rpm -ivh $tempfile
+rc=$?
+
+if [ "$rc" != "0" ]; then
+  echo "$me - install failed, rc=$rc. Exiting."
+  exit 1
+fi
+
+echo "$me - installation complete"
+}
+
+######################################################################
+# Check to see which distro and arch to install
+#
+b54_check_whatami(){
+
+. qmt-whatami -s
+rc=$?
+
+if [ "$rc" != "0" ]; then
+  echo "$me - your distro/version is not supported by QMailToaster, exiting."
+  qmt-whatami
+  exit 1
+else
+  if [ "$DISTRO" != "CentOS" ]; then
+    echo "$me - your distro/version is not supported by Repoforge, exiting."
+    qmt-whatami
+    exit 1
+  fi
+fi
+}
+
+######################################################################
+# main routine begins here
+#
+me=${0##*/}
+myver=v1.0
+PKGNAME=rpmforge-release
+
+# set a temp file for the working scratch. $$ is the current shell ID.
+tempfile=$(tempfile 2>/dev/null) || tempfile=/tmp/$me.$$
+
+# make sure the tempfile is deleted when we're done
+trap "rm -f $tempfile" 0 1 2 5 15
+
+a2_determine_current_version
+
+installed_pkg=$(rpm -q $PKGNAME)
+rc=$?
+
+if [ $rc == "0" ] \
+      && [ "${installed_pkg%.*.*.*}" == "$PKGNAME-$version-$release" ]; then
+  echo "$me - installed package $installed_pkg is the latest - nothing done."
+else
+  if [ $rc == "0" ]; then
+    echo "$me - $installed_pkg is installed, upgrading to $version-$release"
+    yum -y update rpmforge-release
+  else
+    echo "$me - $PKGNAME not installed, installing ..."
+    a5_install_repoforge
+  fi
+fi
+
+exit 0
