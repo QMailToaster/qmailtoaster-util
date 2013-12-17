@@ -12,7 +12,7 @@ Requires:  yum-priorities
 Obsoletes: qmailtoaster-plus
 
 Source1:   qt-install-repoforge
-Source2:   qt-install
+#Source2:   qt-install
 
 BuildArch: noarch
 BuildRoot: %{_topdir}/BUILDROOT/%{name}-%{version}-%{release}.%{_arch}
