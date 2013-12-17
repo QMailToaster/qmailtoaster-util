@@ -60,17 +60,17 @@ echo "$me - installation complete"
 #
 b54_check_whatami(){
 
-. qmt-whatami -s
+. qt-whatami -s
 rc=$?
 
 if [ "$rc" != "0" ]; then
   echo "$me - your distro/version is not supported by QMailToaster, exiting."
-  qmt-whatami
+  qt-whatami
   exit 1
 else
   if [ "$DISTRO" != "CentOS" ]; then
     echo "$me - your distro/version is not supported by Repoforge, exiting."
-    qmt-whatami
+    qt-whatami
     exit 1
   fi
 fi
