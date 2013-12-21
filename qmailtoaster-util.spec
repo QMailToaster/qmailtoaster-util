@@ -12,7 +12,8 @@ Requires:  yum-priorities
 Obsoletes: qmailtoaster-plus
 
 Source1:   qt-install-repoforge
-#Source2:   qt-install
+Source2:   qt-mysql-secure-vpopmail
+#Source3:   qt-install
 
 BuildArch: noarch
 BuildRoot: %{_topdir}/BUILDROOT/%{name}-%{version}-%{release}.%{_arch}
@@ -46,10 +47,11 @@ It replaces what was formerly known as the qmailtoaster-plus package.
 %{__mkdir_p} %{buildroot}%{BIN_LINK}
 #%{__mkdir_p} %{buildroot}%{DOC_LINK}
 
-%{__install} -p %{_sourcedir}/qt-install-repoforge \
-                              %{buildroot}%{BIN_DIR}/qt-install-repoforge
+%{__install} -p %{SOURCE1} %{buildroot}%{BIN_DIR}/qt-install-repoforge
+%{__install} -p %{SOURCE2} %{buildroot}%{BIN_DIR}/qt-mysql-secure-vpopmail
 
-%{__ln_s} ../..%{BIN_DIR}/qt-install-repoforge  %{buildroot}%{BIN_LINK}/.
+%{__ln_s} ../..%{BIN_DIR}/qt-install-repoforge      %{buildroot}%{BIN_LINK}/.
+%{__ln_s} ../..%{BIN_DIR}/qt-mysql-secure-vpopmail  %{buildroot}%{BIN_LINK}/.
 
 #-------------------------------------------------------------------------------
 %clean
@@ -81,5 +83,7 @@ It replaces what was formerly known as the qmailtoaster-plus package.
 #-------------------------------------------------------------------------------
 %changelog
 #-------------------------------------------------------------------------------
+* Sat Dec 21 2013 Eric Shubert <eric@datamatters.us> - 1.0-0.qt
+- Added qt-mysql-secure-vpopmail script
 * Mon Dec 16 2013 Eric Shubert <eric@datamatters.us> - 1.0-0.qt
 - Initial package.

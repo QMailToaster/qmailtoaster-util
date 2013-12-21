@@ -1,0 +1,39 @@
+#!/bin/sh
+# 
+# Copyright (C) 2013 - Eric Shubert <eric@datamatters.us>
+# Secure mysql and install vpopmail database for QMailToaster
+########################################################################
+# Change Log
+# 12/05/13 shubes - created
+########################################################################
+
+chkconfig mysqld on
+service mysqld status >/dev/null 2>&1
+rc=$?
+if [ "$rc" == "3" ]; then
+  service mysqld start >/dev/null 2>&1
+fi 
+
+mysql_secure_installation
+
+if [ $? -ne 0 ]; then
+  echo "$me - unsuccessful mysql_secure_installation - terminating"
+  exit 1
+fi
+
+# Create vpopmail database
+vpopmail_local_pw="SsEeCcRrEeTt"
+read -p "Please enter the MySQL Root Password you just created: "\
+      mysql_root_pw
+mysqladmin create vpopmail -uroot -p$mysql_root_pw
+mysqladmin -uroot -p$mysql_root_pw reload
+mysqladmin -uroot -p$mysql_root_pw refresh
+
+# Grant access to the vpopmail user on from localhost
+echo "GRANT ALL PRIVILEGES ON vpopmail.* \
+      TO vpopmail@localhost IDENTIFIED BY \'$vpopmail_local_pw\'" \
+      | mysql -uroot -p$mysql_root_pw
+mysqladmin -uroot -p$mysql_root_pw reload
+mysqladmin -uroot -p$mysql_root_pw refresh
+
+exit 0
