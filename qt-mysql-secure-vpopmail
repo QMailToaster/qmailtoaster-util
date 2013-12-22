@@ -7,6 +7,10 @@
 # 12/05/13 shubes - created
 ########################################################################
 
+me=${0##*/}
+myver=v1.0
+echo "$me $myver"
+
 chkconfig mysqld on
 service mysqld status >/dev/null 2>&1
 rc=$?
@@ -22,16 +26,15 @@ if [ $? -ne 0 ]; then
 fi
 
 # Create vpopmail database
-vpopmail_local_pw="SsEeCcRrEeTt"
-read -p "Please enter the MySQL Root Password you just created: "\
-      mysql_root_pw
+read -p "Please enter the MySQL Root Password you just created: " mysql_root_pw
 mysqladmin create vpopmail -uroot -p$mysql_root_pw
 mysqladmin -uroot -p$mysql_root_pw reload
 mysqladmin -uroot -p$mysql_root_pw refresh
 
 # Grant access to the vpopmail user on from localhost
+vpopmail_local_pw="SsEeCcRrEeTt"
 echo "GRANT ALL PRIVILEGES ON vpopmail.* \
-      TO vpopmail@localhost IDENTIFIED BY \'$vpopmail_local_pw\'" \
+      TO vpopmail@localhost IDENTIFIED BY '$vpopmail_local_pw'" \
       | mysql -uroot -p$mysql_root_pw
 mysqladmin -uroot -p$mysql_root_pw reload
 mysqladmin -uroot -p$mysql_root_pw refresh
