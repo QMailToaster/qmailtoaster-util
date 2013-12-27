@@ -33,6 +33,7 @@ echo "$me - $myversion"
 a2_disable_selinux
 
 echo "$me - updating all packages (yum update) ...
+yum clean all
 yum update
 
 echo "$me - rebooting now..."
