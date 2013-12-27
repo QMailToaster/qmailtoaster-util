@@ -34,7 +34,7 @@ a2_disable_selinux
 
 echo "$me - updating all packages (yum update) ...
 yum clean all
-yum update
+yum -y update
 
 echo "$me - rebooting now..."
 shutdown -r now
