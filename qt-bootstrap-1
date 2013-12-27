@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright (C) Eric Shubert <eric@datamatters.us>
 #
-# script to install/upgrade repoforge repository for a QMailToaster host
+# script to do initial bootstrap processing (disable selinux, update everything)
 ######################################################################
 # Change Log
 # 12/26/13 written by Eric 'shubes' <ejs@shubes.net>
