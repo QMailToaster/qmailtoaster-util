@@ -1,0 +1,85 @@
+#!/bin/sh
+#  Copyright (C) 2013 - Eric Shubert <eric@datamatters.us>
+#
+#  Install and (re)configure a DNS resolver
+########################################################################
+# Change Log
+# 12/27/13 shubes - created
+########################################################################
+
+########################################################################
+# determine which resolver we want to use
+
+a3_which_resolver(){
+
+echo -n "Would you like PowerDNS (default) or Bind (B[ind]|b[ind]) resolver?: "
+read $reply
+case $reply in
+  B | b | Bind | bind )
+    use_dmn=$binddmn
+    use_pkg=$bindpkg
+    del_dmn=$pdnsdmn
+    del_pkg=$pdnspkg
+    ;;
+  * )
+    use_dmn=$pdnsdmn
+    use_pkg=$pdnspkg
+    del_dmn=$binddmn
+    del_pkg=$bindpkg
+    ;;
+esac
+
+rpm -q $del_pkg >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  service $del_dmn stop
+  yum -y remove $del_pkg
+fi
+
+installpkgs=""
+
+for pkg in bind-utils $use_pkg; do
+  rpm -q $pkg >/dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    installpkgs="$installpkgs $pkg"
+  fi
+done
+
+if [ ! -z "$installpkgs" ]; then
+  yum -y install $installpkgs
+fi
+}
+
+########################################################################
+# configure the /etc/resolv.conf file
+# add "nameserver 127.0.0.1"  line, then
+# comment out all nameserver lines and remove any other 127.0 line
+
+a6_set_resolv_conf(){
+
+sed -i.$(date +%Y%m%d-%H%M%S) \
+      -e '1i\
+nameserver 127.0.0.1
+' \
+      -e 's/^nameserver /#nameserver /' \
+      -e '/^nameserver 127.0/d' \
+      /etc/resolv.conf
+}
+########################################################################
+# main processing begins here
+#
+me=${0##*/}
+myver=v1.0
+
+binddmn=named
+bindpkg=caching-nameserver
+pdnsdmn=pdns-recursor
+pdnspkg=pdns-recursor
+
+a3_which_resolver
+
+a6_set_resolv_conf
+
+chkconfig $use_dmn on
+service   $use_dmn status || service $use_dmn start
+
+exit 0
