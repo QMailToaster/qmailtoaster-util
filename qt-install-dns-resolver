@@ -13,7 +13,7 @@
 a2_which_resolver(){
 
 echo -n "Would you like PowerDNS (default) or Bind (B[ind]|b[ind]) resolver?: "
-read $reply
+read reply
 case $reply in
   B | b | Bind | bind )
     use_dmn=$binddmn
@@ -28,6 +28,8 @@ case $reply in
     del_pkg=$bindpkg
     ;;
 esac
+
+echo "$me - using $use_pkg"
 }
 
 ########################################################################
