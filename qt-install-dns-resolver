@@ -10,7 +10,7 @@
 ########################################################################
 # determine which resolver we want to use
 
-a3_which_resolver(){
+a2_which_resolver(){
 
 echo -n "Would you like PowerDNS (default) or Bind (B[ind]|b[ind]) resolver?: "
 read $reply
@@ -28,12 +28,12 @@ case $reply in
     del_pkg=$bindpkg
     ;;
 esac
+}
 
-rpm -q $del_pkg >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-  service $del_dmn stop
-  yum -y remove $del_pkg
-fi
+########################################################################
+# install the resolver and bind-utils, if not already installed
+
+a4_install_resolver(){
 
 installpkgs=""
 
@@ -50,11 +50,24 @@ fi
 }
 
 ########################################################################
+# stop old resolver if it's installed and running, and start up new resolver
+
+a6_activate_resolver(){
+
+rpm -q $del_pkg >/dev/null 2>&1 && \
+      service $del_dmn status && \
+      service $del_dmn stop
+
+service   $use_dmn status || service $use_dmn start
+chkconfig $use_dmn on
+}
+
+########################################################################
 # configure the /etc/resolv.conf file
 # add "nameserver 127.0.0.1"  line, then
 # comment out all nameserver lines and remove any other 127.0 line
 
-a6_set_resolv_conf(){
+a8_set_resolv_conf(){
 
 sed -i.$(date +%Y%m%d-%H%M%S) \
       -e '1i\
@@ -75,11 +88,21 @@ bindpkg=caching-nameserver
 pdnsdmn=pdns-recursor
 pdnspkg=pdns-recursor
 
-a3_which_resolver
+a2_which_resolver
 
-a6_set_resolv_conf
+a4_install_resolver
 
-chkconfig $use_dmn on
-service   $use_dmn status || service $use_dmn start
+a6_activate_resolver
 
-exit 0
+a8_set_resolv_conf
+
+rpm -q $del_pkg >/dev/null 2>&1 && yum -y remove $del_pkg
+
+host qmailtoaster.com >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  echo "$me - $use_pkg set up successfully"
+  exit 0
+else
+  echo "$me - $use_pkg not working properly - needs fixing"
+  exit 1
+fi
