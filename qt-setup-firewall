@@ -12,6 +12,7 @@
 #
 me=${0##*/}
 myver=v1.0
+echo "$me - $myver"
 
 # Set your IP address
 #MYIP="xxx.xxx.xxx.xxx"
@@ -29,17 +30,17 @@ iptables -P OUTPUT  DROP
 iptables -A INPUT -i eth0 -f -j DROP
 
 # Drop outside packets with local addresses - anti-spoofing measure
-#iptables -A INPUT -s $MYIP -i ! lo -j DROP
-iptables -A INPUT -s 127.0.0.0/8 -i ! lo -j DROP
-#iptables -A INPUT -s 10.0.0.0/8 -i ! lo -j DROP
-#iptables -A INPUT -s 192.168.0.0/16 -i ! lo -j DROP
-iptables -A INPUT -s 224.0.0.0/4 -i ! lo -j DROP
-iptables -A INPUT -s 0.0.0.0/8 -i ! lo -j DROP
-iptables -A INPUT -s 255.255.255.255 -i ! lo -j DROP
-iptables -A INPUT -s 169.254.0.0/16 -i ! lo -j DROP
-iptables -A INPUT -s 221.240.102 -i ! lo -j DROP
-iptables -A INPUT -s 203.215.94.193 -i ! lo -j DROP
-iptables -A INPUT -s 218.71.137.68 -i ! lo -j DROP
+#iptables -A INPUT -s $MYIP           ! -i lo -j DROP
+iptables -A INPUT  -s 127.0.0.0/8     ! -i lo -j DROP
+#iptables -A INPUT -s 10.0.0.0/8      ! -i lo -j DROP
+#iptables -A INPUT -s 192.168.0.0/16  ! -i lo -j DROP
+iptables -A INPUT  -s 224.0.0.0/4     ! -i lo -j DROP
+iptables -A INPUT  -s 0.0.0.0/8       ! -i lo -j DROP
+iptables -A INPUT  -s 255.255.255.255 ! -i lo -j DROP
+iptables -A INPUT  -s 169.254.0.0/16  ! -i lo -j DROP
+iptables -A INPUT  -s 221.240.102     ! -i lo -j DROP
+iptables -A INPUT  -s 203.215.94.193  ! -i lo -j DROP
+iptables -A INPUT  -s 218.71.137.68   ! -i lo -j DROP
 
 # Pass all locally-originating packets
 iptables -A INPUT -i lo -j ACCEPT
