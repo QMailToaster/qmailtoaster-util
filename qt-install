@@ -51,7 +51,8 @@ fi
 
 a1_install_non_minimal_os
 
-qt-install-dns-resolver
+# this is in progress
+# qt-install-dns-resolver
 
 qt-setup-firewall
 
