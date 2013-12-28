@@ -19,9 +19,9 @@ echo "$me - installing yum-priorities (plugin) ..."
 yum -y install yum-priorities
 
 # install qmailtoaster-release
-qmt-release-pkg=qmailtoaster-release-2.0-1.qt.nodist.noarch.rpm
-echo "$me - installing $qmt-release-pkg (repo) ..."
-rpm -ivh http://mirrors.qmailtoaster.com/current/nodist/$qmt-release-pkg
+qmt_release_pkg=qmailtoaster-release-2.0-1.qt.nodist.noarch.rpm
+echo "$me - installing $qmt_release_pkg (repo) ..."
+rpm -ivh http://mirrors.qmailtoaster.com/current/nodist/$qmt_release_pkg
 
 # install qmailtoaster-util (scripts)
 echo "$me - installing qmailtoaster-util (scripts) ...
