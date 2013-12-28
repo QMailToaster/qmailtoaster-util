@@ -1,0 +1,66 @@
+#!/bin/sh
+#  Copyright (C) 2013 - Eric Shubert <eric@datamatters.us>
+#
+#  Install QMailToaster packages and configure host
+########################################################################
+# Change Log
+# 12/27/13 shubes - created
+########################################################################
+
+########################################################################
+# install os packages we want that aren't part of the minimal install
+#
+a1_install_non_minimal_os(){
+
+yum -y install \
+      man \
+      ntp \
+
+# setup ntp daemon
+chkconfig ntpd on
+service start ntpd
+}
+
+########################################################################
+# install the QMT packages
+#
+a4_install_qmt_packages(){
+
+echo "$me - installing the QMailToaster packages ..."
+
+yum -y install \
+      simscan \
+      dovecot \
+      vqadmin \
+      qmailadmin \
+
+}
+########################################################################
+# main processing begins here
+#
+me=${0##*/}
+myver=v1.0
+
+. qt-whatami -s
+
+if [ $? -ne 0 ]; then
+  qt-whatami
+  echo "$me - qt-whatami failed"
+  exit 1
+fi
+
+a1_install_non_minimal_os
+
+qt-install-dns-resolver
+
+qt-setup-firewall
+
+qt-install-repoforge
+
+a4_install_qmt_packages
+
+qt-mysql-secure-vpopmail
+
+# setup web server
+
+exit 0
