@@ -14,7 +14,7 @@ a2_disable_selinux(){
 
 selinux_config=/etc/selinux/config
 
-if [ ! -f $selinux_config ]; then
+if [ ! -f "$selinux_config" ]; then
   echo "$me - $seclinux_config not found"
   exit 1
 fi
@@ -32,7 +32,7 @@ echo "$me - $myversion"
 
 a2_disable_selinux
 
-echo "$me - updating all packages (yum update) ...
+echo "$me - updating all packages (yum update) ..."
 yum clean all
 yum -y update
 
