@@ -4,9 +4,9 @@ Version:   2.0
 Release:   0%{?dist}
 License:   GPL
 Group:     System Environment/Base
-URL:       http://qmailtoaster.com/
 Vendor:    QmailToaster
 Packager:  Eric Shubert <qmt-build@datamatters.us>
+URL:       http://qmailtoaster.com/
 
 Requires:  wget
 Requires:  yum-priorities
