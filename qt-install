@@ -33,6 +33,10 @@ yum -y install \
       dovecot \
       vqadmin \
       qmailadmin \
+      isoqlog \
+      qmailmrtg \
+      send-emails \
+      squirrelmail \
 
 }
 ########################################################################
