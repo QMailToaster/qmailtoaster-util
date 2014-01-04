@@ -18,7 +18,7 @@ yum -y install \
 
 # setup ntp daemon
 chkconfig ntpd on
-service start ntpd
+service ntpd start
 }
 
 ########################################################################
@@ -67,5 +67,7 @@ a4_install_qmt_packages
 qt-mysql-secure-vpopmail
 
 # setup web server
+chkconfig httpd on
+service httpd start
 
 exit 0
