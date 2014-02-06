@@ -1,0 +1,119 @@
+#!/bin/bash
+# Copyright (C) 2014 Eric Shubert <eric@datamatters.us>
+#
+# script to install/upgrade epel repository for a QMailToaster host
+######################################################################
+# Change Log
+# 02/06/14 shubes - created (from qt-install-repoforge)
+######################################################################
+
+######################################################################
+# Check to see which distro and arch to install
+#
+a1_check_whatami(){
+
+. qt-whatami -s
+rc=$?
+
+if [ "$rc" != "0" ]; then
+  qt-whatami
+  echo "$me - your distro/version is not supported by QMailToaster, exiting."
+  exit 1
+else
+  if [ "$DISTRO" != "CentOS" ]; then
+    qt-whatami
+    echo "$me - your distro is not supported by epel, exiting."
+    exit 1
+  fi
+fi
+}
+
+######################################################################
+# Figure out which version/release is the latest available
+#
+a2_determine_current_version(){
+
+echo "$me $myver - getting version of the latest $PKGNAME ..."
+
+epelurl=dl.fedoraproject.org/pub/epel/${OSVER%.*}/$(uname -i)
+html_line=$(curl http://$epelurl/ 2>/dev/null | grep $PKGNAME)
+if [ $? != "0" ]; then
+  echo "$me - $PKGNAME not found at $epelurl/."
+  exit 1
+fi
+
+pkgfile=${html_line#*\"}
+pkgfile=${pkgfile%\"*}
+tempname=${pkgfile%%.*}
+release=${tempname##*-}
+tempname=${tempname%-$release}
+version=${tempname##*-}
+}
+
+######################################################################
+# Install or update epel-release package
+#
+a5_install_update(){
+
+if [ $rc == "0" ]; then
+  echo "$me - $installed_pkg is installed, upgrading to $version-$release"
+  yum -y update $PKGNAME
+else
+  echo "$me - $PKGNAME not installed, installing ..."
+  b55_install_pkg
+fi
+
+epelfile=/etc/yum.repos.d/epel.repo
+incl_clause="includepkgs=pdns-recursor"
+grep -q ^$incl_clause $epelfile
+if [ "$?" != "0" ]; then
+  sed -i "/enabled=1/a $incl_clause" $epelfile
+fi
+
+echo "$me - upgrade complete"
+}
+
+######################################################################
+# Install the epel-release package 'manually'
+#
+b55_install_pkg(){
+
+# we need to put the rpm in a tempfile in case of web redirection
+curl http://$epelurl/$pkgfile 2>/dev/null >$tempfile
+rpm -ivh $tempfile
+rc=$?
+
+if [ "$rc" != "0" ]; then
+  echo "$me - install failed, rc=$rc. Exiting."
+  exit 1
+fi
+}
+
+######################################################################
+# main routine begins here
+#
+me=${0##*/}
+myver=v1.0
+PKGNAME=epel-release
+
+# set a temp file for the working scratch. $$ is the current shell ID.
+tempfile=$(tempfile 2>/dev/null) || tempfile=/tmp/$me.$$
+
+# make sure the tempfile is deleted when we're done
+trap "rm -f $tempfile" 0 1 2 5 15
+
+a1_check_whatami
+
+a2_determine_current_version
+
+installed_pkg=$(rpm -q $PKGNAME)
+rc=$?
+
+if [ $rc == "0" ] \
+      && [ "${installed_pkg%.*}" == "$PKGNAME-$version-$release" ]; then
+  echo "$me - installed package $installed_pkg is the latest - nothing done."
+else
+  a5_install_update
+fi
+
+exit 0
