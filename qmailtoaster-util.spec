@@ -13,10 +13,11 @@ Requires:  yum-priorities
 Obsoletes: qmailtoaster-plus
 
 Source1:   qt-install-repoforge
-Source2:   qt-mysql-secure-vpopmail
-Source3:   qt-setup-firewall
-Source4:   qt-install-dns-resolver
-Source5:   qt-install
+Source2:   qt-install-epel
+Source3:   qt-mysql-secure-vpopmail
+Source4:   qt-setup-firewall
+Source5:   qt-install-dns-resolver
+Source6:   qt-install
 
 BuildArch: noarch
 BuildRoot: %{_topdir}/BUILDROOT/%{name}-%{version}-%{release}.%{_arch}
@@ -51,12 +52,14 @@ It replaces what was formerly known as the qmailtoaster-plus package.
 #%{__mkdir_p} %{buildroot}%{DOC_LINK}
 
 %{__install} -p %{SOURCE1} %{buildroot}%{BIN_DIR}/qt-install-repoforge
-%{__install} -p %{SOURCE2} %{buildroot}%{BIN_DIR}/qt-mysql-secure-vpopmail
-%{__install} -p %{SOURCE3} %{buildroot}%{BIN_DIR}/qt-setup-firewall
-%{__install} -p %{SOURCE4} %{buildroot}%{BIN_DIR}/qt-install-dns-resolver
-%{__install} -p %{SOURCE5} %{buildroot}%{BIN_DIR}/qt-install
+%{__install} -p %{SOURCE2} %{buildroot}%{BIN_DIR}/qt-install-epel
+%{__install} -p %{SOURCE3} %{buildroot}%{BIN_DIR}/qt-mysql-secure-vpopmail
+%{__install} -p %{SOURCE4} %{buildroot}%{BIN_DIR}/qt-setup-firewall
+%{__install} -p %{SOURCE5} %{buildroot}%{BIN_DIR}/qt-install-dns-resolver
+%{__install} -p %{SOURCE6} %{buildroot}%{BIN_DIR}/qt-install
 
 %{__ln_s} ../..%{BIN_DIR}/qt-install-repoforge      %{buildroot}%{BIN_LINK}/.
+%{__ln_s} ../..%{BIN_DIR}/qt-install-epel           %{buildroot}%{BIN_LINK}/.
 %{__ln_s} ../..%{BIN_DIR}/qt-mysql-secure-vpopmail  %{buildroot}%{BIN_LINK}/.
 %{__ln_s} ../..%{BIN_DIR}/qt-setup-firewall         %{buildroot}%{BIN_LINK}/.
 %{__ln_s} ../..%{BIN_DIR}/qt-install-dns-resolver   %{buildroot}%{BIN_LINK}/.
@@ -92,6 +95,8 @@ It replaces what was formerly known as the qmailtoaster-plus package.
 #-------------------------------------------------------------------------------
 %changelog
 #-------------------------------------------------------------------------------
+* Fri Feb  7 2014 Eric Shubert <eric@datamatters.us> - 1.0-0.qt
+- Added qt-install-epel script
 * Fri Dec 27 2013 Eric Shubert <eric@datamatters.us> - 1.0-0.qt
 - Added qt-setup-firewall script
 - Added qt-install-dns-resolver script
