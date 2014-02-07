@@ -1,9 +1,10 @@
 #!/bin/sh
-#  Copyright (C) 2013 - Eric Shubert <eric@datamatters.us>
+#  Copyright (C) 2013-2014 - Eric Shubert <eric@datamatters.us>
 #
 #  Install and (re)configure a DNS resolver
 ########################################################################
 # Change Log
+# 02/06/14 shubes - added epel repo for installing pdns-recursor
 # 12/27/13 shubes - created
 ########################################################################
 
@@ -30,6 +31,18 @@ case $reply in
 esac
 
 echo "$me - using $use_pkg"
+}
+
+########################################################################
+# install the epel repo for pdns, if not already installed
+
+a3_install_epel_repo(){
+
+rpm -q epel-release >/dev/null 2>&1
+
+if [ "$?" != "0" ]; then
+  qt-install-epel
+fi
 }
 
 ########################################################################
@@ -92,6 +105,10 @@ pdnspkg=pdns-recursor
 
 a2_which_resolver
 
+if [ "$use_pkg" == "$pdnspkg" ]; then
+  a3_install_epel_repo
+fi
+
 a4_install_resolver
 
 a6_activate_resolver
@@ -100,6 +117,7 @@ a8_set_resolv_conf
 
 rpm -q $del_pkg >/dev/null 2>&1 && yum -y remove $del_pkg
 
+# finally, let's test it to see if it's working
 host qmailtoaster.com >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   echo "$me - $use_pkg set up successfully"
