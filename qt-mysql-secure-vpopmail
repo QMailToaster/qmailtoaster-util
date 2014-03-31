@@ -26,7 +26,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Create vpopmail database
-read -p "Please enter the MySQL Root Password you just created: " mysql_root_pw
+read -s -p "Please enter the MySQL Root Password you just created: " mysql_root_pw
 
 # TODO: only create the database if it doesn't exist. Offer to drop it.
 mysqladmin create vpopmail -uroot -p$mysql_root_pw
