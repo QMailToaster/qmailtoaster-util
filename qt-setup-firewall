@@ -4,6 +4,7 @@
 #  Setup default QMailToaster firewall
 ########################################################################
 # Change Log
+# 04/01/14 shubes - enabled filters for dropping spoofed private addresses
 # 12/27/13 shubes - created
 ########################################################################
 
@@ -15,7 +16,7 @@ myver=v1.0
 echo "$me - $myver"
 
 # Set your IP address
-#MYIP="xxx.xxx.xxx.xxx"
+MYIP="169.254.111.111"
 
 # Flush rules & reset counters
 iptables -F
@@ -30,10 +31,10 @@ iptables -P OUTPUT  DROP
 iptables -A INPUT -i eth0 -f -j DROP
 
 # Drop outside packets with local addresses - anti-spoofing measure
-#iptables -A INPUT -s $MYIP           ! -i lo -j DROP
+iptables -A INPUT -s $MYIP           ! -i lo -j DROP
+iptables -A INPUT -s 10.0.0.0/8      ! -i lo -j DROP
+iptables -A INPUT -s 192.168.0.0/16  ! -i lo -j DROP
 iptables -A INPUT  -s 127.0.0.0/8     ! -i lo -j DROP
-#iptables -A INPUT -s 10.0.0.0/8      ! -i lo -j DROP
-#iptables -A INPUT -s 192.168.0.0/16  ! -i lo -j DROP
 iptables -A INPUT  -s 224.0.0.0/4     ! -i lo -j DROP
 iptables -A INPUT  -s 0.0.0.0/8       ! -i lo -j DROP
 iptables -A INPUT  -s 255.255.255.255 ! -i lo -j DROP
@@ -63,6 +64,8 @@ iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
 #iptables -A INPUT -p tcp -m tcp --syn --dport 20 -j ACCEPT
 #iptables -A INPUT -p tcp -m tcp --syn --dport 21 -j ACCEPT
 
+# Note, if your QMT host is on a public IP address,
+# it is HIGHLY recommended that you use a non-standard port for ssh
 # Accept ssh (port 22)
 #iptables -A INPUT -p tcp -m tcp --syn --dport 22 -j ACCEPT
 
