@@ -1,0 +1,312 @@
+#!/bin/bash
+#
+# Copyright (C) 2007-2008 Eric Shubert <ejs@shubes.net>
+#
+########################################################################
+#
+# script for listing/selecting man pages for a package
+#
+########################################################################
+#
+# change log
+# 04/04/08 shubes - changed `` to $()
+# 02/15/07 shubes - created
+#
+########################################################################
+## if dialog is not installed, offer to install it if yum is available
+#
+a2_check_dialog(){
+
+which rpm >/dev/null 2>&1
+
+if [ $? != "0" ]; then
+  echo "$me only runs on rpm based distros, sorry."
+  exit 1
+fi
+
+which dialog >/dev/null 2>&1
+
+if [ $? != "0" ]; then
+  which yum >/dev/null 2>&1
+  if [ $? != "0" ]; then
+    echo "dialog is not installed and neither is yum, so I can't install it."
+    echo "Please install dialog manually and try again."
+    exit 1
+  else
+    echo -n "dialog is not installed, would you like to install it? [y]|n : "
+    read REPLY
+    case $REPLY in
+      "y" | "yes" | "" )
+        sudo yum -y install dialog
+        if [ $? != "0" ]; then
+          echo "$me - installation of dialog failed, exiting."
+          exit 1
+        fi
+        ;;
+      * )
+        echo "I can't do my thing without dialog installed, sorry."
+        exit 1
+        ;;
+    esac
+  fi
+fi
+}
+
+########################################################################
+## get package names into a sorted list
+#
+a3_get_package_list(){
+
+if [ ! -z "$sregex" ]; then
+  pkgs="$(rpm -qa | grep \"$sregex\")"
+fi
+
+for pkg in $pkg $pkgs; do
+  echo $pkg >> $tempdial
+done
+}
+
+########################################################################
+## package(s) found, so process the request
+#
+a5_process_request(){
+
+pkglist=`sort <$tempdial`
+captpkgs="Packages: "
+items=0
+
+if [ -z "$sect" ]; then
+  sectexp="."
+else
+  sectexp="[$sect]"
+fi
+
+for pkg in $pkglist; do
+  manfiles=$(rpm -ql $pkg | grep man/man$sectexp/)
+  if [ $? == "0" ]; then
+    b54_process_each_package
+  fi
+done
+
+if [ -s $tempmenu ]; then
+  b56_show_the_menu
+else
+  echo "There are no man pages available for $pkglist $msgsect $sect"
+fi
+}
+
+########################################################################
+## build the man pages for the package into the menu list
+#
+b54_process_each_package(){
+
+if (($W_MENU_HEIGHT > 5 )); then
+  W_MENU_HEIGHT=$(($W_MENU_HEIGHT - 1))
+  CAPTION="${CAPTION}${captpkgs}${pkg} "
+  captpkgs="\n          "
+else
+  CAPTION="${CAPTION}."
+fi
+
+for manfilename in $manfiles; do
+  c545_each_package_manpage
+done
+}
+
+########################################################################
+## build a menu entry for the man page
+#
+c545_each_package_manpage(){
+
+items=$(($items + 1))
+manfile=${manfilename##/[^/]*/man/man[$MANSECTS]/}
+mantemp=${manfile%.[^.]*}
+manname=${mantemp%.[$MANSECTS]}
+mansect=${mantemp#$manname.}
+found=""
+
+while read whatpage whatsect whatdash whatdesc; do
+  whatsect=$(echo $whatsect | tr -d "()")
+  if [ "$whatpage" == "$manname" ] \
+        && [ "$whatsect" == "$mansect" ]; then
+    found=0
+    break
+  fi
+done <<!EOF!
+$(whatis $manname)
+!EOF!
+
+if [ "$found" ]; then
+  echo "\"${whatpage} $whatsect\" \"$whatdesc\"" >>$tempmenu
+else
+  echo "\"${manname} $mansect\" \"-- No Description Available --\"" >>$tempmenu
+fi
+}
+
+########################################################################
+## there's something to show, so show the menu
+#
+b56_show_the_menu(){
+
+CAPTION="$CAPTION\n manpage Sec#        Description\n"
+
+if (($items < $W_MENU_HEIGHT )); then
+  W_HEIGHT=$(($W_HEIGHT - $W_MENU_HEIGHT + $items ))
+  W_MENU_HEIGHT=$items
+fi
+
+while true; do
+  c565_process_menu
+done
+}
+
+########################################################################
+## invoke the dialog command to display the menu, then check selection
+#
+c565_process_menu(){
+
+${DIALOG:=dialog} --clear \
+      --help-button \
+      --help-label Sections \
+      --ok-label Man \
+      --title "Menu of man pages" \
+      --menu "$CAPTION" \
+            $W_HEIGHT $W_WIDTH $W_MENU_HEIGHT \
+      --file $tempmenu \
+      2>$tempdial
+
+case $? in
+  0 )
+    read manpage section <$tempdial
+    man $section $manpage
+    ;;
+  1 )
+#   No or Cancel button was pressed
+    break
+    ;;
+  2 )
+#   Help button was pressed, if present
+    d5656_show_sections
+    ;;
+  3 )
+#   Extra button was pressed, if present
+    break
+    ;;
+  -1 )
+#   errors occured, or exited via the ESC key
+    break
+    ;;
+  * )
+#   undefined return code
+    break
+    ;;
+esac
+}
+
+########################################################################
+## show help screen with section descriptions
+#
+d5656_show_sections(){
+
+if [ ! -f $temphelp ]; then
+  echo "#   Topic" >$temphelp
+  echo "1   Commands available to users" >>$temphelp
+  echo "2   Unix and C system calls" >>$temphelp
+  echo "3   C library routines for C programs" >>$temphelp
+  echo "4   Special file names" >>$temphelp
+  echo "5   File formats and conventions for Linux" >>$temphelp
+  echo "6   Games" >>$temphelp
+  echo "7   Word processing packages" >>$temphelp
+  echo -n "8   System administration commands, processes" >>$temphelp
+fi
+
+$DIALOG --clear  \
+      --exit-label Back \
+      --title "man Sections" \
+      --textbox $temphelp 13 49 \
+      2>$tempdial
+}
+
+########################################################################
+## show usage and exit
+#
+q01_usage_exit(){
+
+echo "usage: $me [section] ... {-s regex | package_name} [package_name] ..."
+exit 1
+}
+
+########################################################################
+## main execution begins here
+#
+
+me=$(basename $0)
+myver=v0.3
+MANSECTS="1-8"
+sect=""
+pkg=""
+msgnf=""
+msgsect=""
+CAPTION=""
+W_HEIGHT=$((${LINES:-24} - 3))
+W_WIDTH=$((${COLUMNS:-80} - 4))
+W_MENU_HEIGHT=$(($W_HEIGHT - 7))
+
+if [ -z "$1" ]; then
+  q01_usage_exit
+else
+  while (( "$#" )); do
+    case $1 in
+      "-h" )
+        q01_usage_exit
+        ;;
+      [$MANSECTS] )
+        sect="$sect$1"
+        msgsect=" in section(s)"
+        shift
+        ;;
+      "-s" )
+        if [ -z "$2" ]; then
+          echo "$me - regex parameter not supplied"
+          q01_usage_exit
+        else
+          sregex="$2"
+          msgmatch="matching"
+          CAPTION="Matching: ${2}\n"
+          W_MENU_HEIGHT=$(($W_MENU_HEIGHT - 1))
+          shift 2
+        fi
+        ;;
+      * )
+        pkgver=`rpm -q $1 2>/dev/null`
+        if [ $? == "0" ]; then
+          pkg="$pkg $pkgver"
+          shift
+        else
+          echo "Package $1 is not installed"
+          exit 1
+        fi
+        ;;
+    esac
+  done
+fi
+
+a2_check_dialog
+
+# set a temp file for the working scratch, menu and help
+tempdial=`tempfile 2>/dev/null` || tempdial=/tmp/$me.dial.$$
+tempmenu=`tempfile 2>/dev/null` || tempmenu=/tmp/$me.menu.$$
+temphelp=`tempfile 2>/dev/null` || temphelp=/tmp/$me.help.$$
+
+# make sure the temp files are deleted when we're done
+trap "rm -f $tempdial $tempmenu $temphelp" 0 1 2 5 15
+
+a3_get_package_list
+
+if [ -s $tempdial ]; then
+  a5_process_request
+else
+  echo "No package(s)$pkg found $msgmatch $sregex"
+fi
+
+exit 0
