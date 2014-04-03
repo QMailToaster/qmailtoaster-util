@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# Copyright (C) 2007-2010 Eric Shubert <ejs@shubes.net>
+#                         Jake Vickers <jake@jakev.com>
+#
+# Script for controlling the clamd daemon
+#
+#############################################################################
+# change log
+# 01/06/10 shubes - refactored, added silent option for sane security script
+# 08-02-07 Jake   - adapted from the qmail-spam script I wrote a while ago.
+#############################################################################
+
+myname=${0##*/}
+myver=v0.3
+clamdir=/var/qmail/supervise/clamd
+unset silent
+if [ "$1" == "-s" ]; then
+  silent=$1
+  shift
+fi
+
+case "$1" in
+  start)
+    if [ ! $silent ]; then
+      echo "Starting clamd ..."
+    fi
+    if svok $clamdir ; then
+      svc -u $clamdir $clamdir/log
+      sleep 2
+    else
+      if [ ! $silent ]; then
+        echo "supervise for clamd not running!"
+      fi
+    fi
+    ;;
+  stop)
+    if [ ! $silent ]; then
+      echo "Stopping clamd ..."
+    fi
+    svc -d $clamdir $clamdir/log
+    sleep 2
+    ;;
+  pause)
+    if [ ! $silent ]; then
+      echo "Pausing clamd ..."
+    fi
+    svc -p $clamdir
+    sleep 2
+    ;;
+  cont)
+    if [ ! $silent ]; then
+      echo "Continuing clamd ..."
+    fi
+    svc -c $clamdir
+    sleep 2
+    ;;
+  restart)
+    if [ ! $silent ]; then
+      echo "Restarting clamd...."
+    fi
+    svc -d $clamdir $clamdir/log
+    svc -t $clamdir $clamdir/log
+    svc -u $clamdir $clamdir/log
+    sleep 2
+    ;;
+  stat | status)
+    :
+    ;;
+  help)
+    cat <<HELP
+      stop -- stops clamd service
+      start -- starts clamd service
+      restart -- stops and restarts clamd
+      pause -- temporarily stops clamd service
+      cont -- continues paused clamd service
+      stat -- displays status of clamd service
+      status -- displays status of clamd service
+HELP
+    exit 1
+    ;;
+  *)
+    echo "Usage: $me [-s] {start|stop|restart|stat|status|pause|cont|help}"
+    exit 1
+    ;;
+esac
+
+if [ ! $silent ]; then
+  echo
+  svstat /var/qmail/supervise/clamd
+  svstat /var/qmail/supervise/clamd/log
+fi
+
+exit 0
