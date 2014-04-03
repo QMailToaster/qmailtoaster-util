@@ -1,0 +1,94 @@
+#!/bin/sh
+# Copyright (C) 2006-2006 Jake Vickers
+# Written by Jake Vickers (jake@jakev.com) on 8-5-2005
+# 
+# This script allows you to start/stop/restart/pause/cont your spamd
+# daemon in QmailToaster easier. Great for when you make changes to
+# your local.cf or add more rules.
+#
+# Lots of hints from www.newvibes.net/linux/qmail.html
+# were used to write this modified script
+# This of course comes with no warranty.
+# It works for me, it may not work for you!
+
+case "$1" in
+	start)
+		echo "Starting spamd...."
+		if svok /var/qmail/supervise/spamd ; then
+			svc -u /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+		else
+			echo "supervise for spamd not running!"
+		fi
+		echo
+		sleep 2
+		svstat /var/qmail/supervise/spamd
+		svstat /var/qmail/supervise/spamd/log
+		;;
+	
+	stop)
+		echo "Stopping spamd...."
+		svc -d /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+		sleep 2
+		echo
+		svstat /var/qmail/supervise/spamd
+		svstat /var/qmail/supervise/spamd/log
+		;;
+
+	pause)
+		echo "Pausing spamd...."
+		svc -p /var/qmail/supervise/spamd
+		echo
+		sleep 2
+		svstat /var/qmail/supervise/spamd
+		;;
+
+	cont)
+		echo "Continuing spamd...."
+		svc -c /var/qmail/supervise/spamd
+		sleep 2
+		echo
+		svstat /var/qmail/supervise/spamd
+		svstat /var/qmail/supervise/spamd/log
+		;;
+
+	restart)
+		echo "Restarting spamd...."
+		svc -d /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+		svc -t /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+		svc -u /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+		sleep 2
+		echo
+		svstat /var/qmail/supervise/spamd
+		svstat /var/qmail/supervise/spamd/log
+		;;
+
+	stat)
+		svstat /var/qmail/supervise/spamd
+		svstat /var/qmail/supervise/spamd/log
+		echo
+		;;
+
+	status) 
+		svstat /var/qmail/supervise/spamd
+		svstat /var/qmail/supervise/spamd/log
+		echo
+		;;
+
+	help)
+   		 cat <<HELP
+		  stop -- stops spamd service
+		  start -- starts spamd service
+		  pause -- temporarily stops spamd service
+		  cont -- continues paused spamd service
+		  stat -- displays status of spamd service
+		  restart -- stops and restarts spamd
+		  status -- displays status of spamd service
+HELP
+   		 ;;
+	  *)
+  		  echo "Usage: $0 {start|stop|restart|stat|pause|cont|status|help}"
+  		  exit 1
+   		 ;;
+esac
+	exit 0
+
