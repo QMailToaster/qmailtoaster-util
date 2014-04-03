@@ -1,0 +1,371 @@
+#!/bin/bash
+#
+# Copyright (C) 2006-2008 Eric Shubert <ejs@shubes.net>
+#
+# Utility for listing/searching qmail log files
+# Original script by Fabio Olaechea
+#
+#   Future Enhancements
+#     .) find .sed file w/out hard coded path
+#
+#####################################################################
+# Change Log
+# 04/05/08 shubes - changed `` to $()
+# 10/17/07 shubes - fixed -t option
+# 12/17/06 shubes - added sed, grep, date/time parameters
+# 11/24/06 shubes - restructured, added numerous capabilities
+# 11/21/06 shubes - added -f option, thanks to Philip@ows.ch
+#####################################################################
+
+#####################################################################
+## edit service to be sure it exists
+#
+a1_edit_parameters(){
+
+if [ -z "$service" ] ; then
+  q1_usage
+elif [ ! -d $logdir/$service ]; then
+  echo "Invalid service: $service"
+  q2_services
+  exit 1
+fi
+}
+
+#####################################################################
+## show log file names
+#
+a2_list_log_files(){
+
+for file in $(find $logdir/$service -name "*.s"); do
+  filename=$(basename $file)
+  tempname=$(echo $filename | tai64nlocal | sed 's/ /_/')
+  datename=${tempname%\.[0-9]*\.s}
+  echo "$filename - $datename"
+done
+}
+
+#####################################################################
+## show logs content
+#
+a3_show_logs_content(){
+
+if [ ! -z "$sedtrim" ]; then
+  b32_get_sed_script
+fi
+
+if [ ! -z "$greppattern" ]; then
+  grepcmd="| grep $greppattern"
+fi
+
+if [ ! -z "$namepattern" ] \
+      || [ ! -z "$contpattern" ] \
+      || [ ! -z "$dateparm" ]; then
+  b34_select_files
+else
+  showfiles="$logdir/$service/current"
+fi
+
+if [ -z "$command" ]; then
+  command="cat"
+else
+  command="tail $command"
+fi
+
+if [ ! -z "$lesscmd" ] && [ ! -z "$position_less" ]; then
+  lesscmd="$lesscmd $position_less"
+fi
+
+# show the log
+#echo "$me: eval $command $showfiles $tai64n $sedtrim $grepcmd $lesscmd"
+eval $command $showfiles $tai64n $sedtrim $grepcmd $lesscmd
+}
+
+#####################################################################
+## get sed commands for trimming the output
+#
+b32_get_sed_script(){
+
+#sedfile=${mydir%bin}etc/qmlog-trim.sed
+sedfile=/opt/qmailtoaster-util/etc/qmlog-trim.sed
+
+if [ -f $sedfile ]; then
+  while read sedline; do
+    sedtrim="$sedtrim $sedline;"
+  done < $sedfile
+else
+  echo "$me $myver notice - sed file $sedfile not found"
+fi
+
+sedtrim="$sedtrim $sedparm'"
+}
+
+#####################################################################
+## select files to show based on name, dates, and/or content pattern
+#
+b34_select_files(){
+
+if [ -z "$namepattern" ]; then
+  filepattern="*.s"
+else
+  filepattern="*$namepattern*.s"
+fi
+
+if [ ! -z "$dateparm" ]; then
+  c342_select_date_time_range
+elif [ ! -z "$namepattern" ]; then
+  c344_select_filename_pattern
+else
+  somefiles="$logdir/$service/$filepattern $logdir/$service/current"
+fi
+
+if [ ! -z "$contpattern" ]; then
+  c346_select_content
+else
+  showfiles="$somefiles"
+fi
+}
+
+#####################################################################
+## select files by date, time range
+#
+c342_select_date_time_range(){
+
+d3422_setup_date_time_fields
+
+for logfile in $(ls $logdir/$service/$filepattern 2>/dev/null) \
+      $logdir/$service/current; do
+  d3425_select_each_file
+done
+
+if [ -z "$somefiles" ]; then
+  echo "$me - no $service log found with date/time matching $dateparm"
+  exit 1
+fi
+
+position_less="-p${from_mon}-${from_day}"
+}
+
+#####################################################################
+## setup date, time fields for file selection
+#
+d3422_setup_date_time_fields(){
+
+from_datetime=$(echo $dateparm | cut --delimiter=- --fields=1)
+thru_datetime=$(echo $dateparm | cut -s --delimiter=- --fields=2)
+from_mmdd=$(echo $from_datetime | cut --delimiter=: --fields=1)
+from_hhmm=$(echo $from_datetime | cut -s --delimiter=: --fields=2)
+thru_mmdd=$(echo $thru_datetime | cut --delimiter=: --fields=1)
+thru_hhmm=$(echo $thru_datetime | cut -s --delimiter=: --fields=2)
+: ${thru_mmdd:=$from_mmdd}
+: ${from_hhmm:=0000}
+: ${thru_hhmm:=2359}
+from_mon=$(echo $from_mmdd | cut -b 1-2)
+from_day=$(echo $from_mmdd | cut -b 3-4)
+thru_mon=$(echo $thru_mmdd | cut -b 1-2)
+thru_day=$(echo $thru_mmdd | cut -b 3-4)
+curryear=$(date +%Y)
+currmmdd=$(date +%m%d)
+
+if [ "$from_mmdd" -gt "$currmmdd" ]; then
+  from_year=$(($curryear - 1))
+else
+  from_year=$curryear
+fi
+if [ "$thru_mmdd" -gt "$currmmdd" ]; then
+  thru_year=$(($curryear - 1))
+else
+  thru_year=$curryear
+fi
+
+from_date_time="$from_year$from_mon$from_day$from_hhmm"
+thru_date_time="$thru_year$thru_mon$thru_day$thru_hhmm"
+}
+#####################################################################
+## select each file by date/time
+#
+d3425_select_each_file(){
+
+read logdate logtime restoflog <<!
+$(head -n1 $logfile | tai64nlocal)
+!
+begdate=$(echo $logdate | tr -d -)
+begtime=$(echo ${logtime%:[0-9][0-9]\.[0-9]*} | tr -d :)
+beg_date_time=$begdate$begtime
+
+read logdate logtime restoflog <<!
+$(tail -n1 $logfile | tai64nlocal)
+!
+enddate=$(echo $logdate | tr -d -)
+endtime=$(echo ${logtime%:[0-9][0-9]\.[0-9]*} | tr -d :)
+end_date_time=$enddate$endtime
+
+if [ "$end_date_time" -lt "$from_date_time" ] \
+      || [ "$beg_date_time" -gt "$thru_date_time" ]; then
+  continue
+else
+  somefiles="$somefiles $logfile"
+fi
+}
+
+#####################################################################
+## select files by filename pattern
+#
+c344_select_filename_pattern(){
+
+somefiles=$(ls $logdir/$service/$filepattern 2>1)
+
+if [ -z "$somefiles" ]; then
+  echo "$me - no $service log found with filename pattern $namepattern"
+  exit 1
+fi
+}
+#####################################################################
+## select files by content
+#
+c346_select_content(){
+
+showfiles=$(grep -lce "$contpattern" $somefiles 2>/dev/null)
+
+if [ -z "$showfiles" ]; then
+  if [ -z "$namepattern" ] && [ -z "$dateparm" ]; then
+    withmsg=""
+  elif [ -z "$namepattern" ]; then
+    withmsg=" with date/time matching $dateparm"
+  elif [ -z "$dateparm" ]; then
+    withmsg=" with filename pattern $namepattern"
+  else
+    withmsg=" with date/time matching $dateparm and filename pattern $namepattern"
+  fi
+  echo "$me - pattern $contpattern not found in any $service logs $withmsg"
+  exit 1
+fi
+
+if [ -z "$position_less" ]; then
+  position_less="-p$contpattern"
+fi
+}
+
+#####################################################################
+## show usage output
+#
+q1_usage(){
+
+echo "$me $myver -  show current log of service 'service'"
+echo "usage: qmlog service [option] ..."
+q2_services
+echo "options:"
+echo "  -h[elp]      this help"
+echo "  -l[ist]      list saved logs of service"
+echo "  -f           follow as it grows, using 'tail -f'"
+echo "  -t N         show (tail) last N lines"
+echo "  -nl          show without using less"
+echo "  -nt          show with no trimming"
+echo "  -d mmdd[:hhmm][-mmdd[:hhmm]]"
+echo "               show logs that contain the date 'mmdd' [thru -'mmdd']"
+echo "  -lc regex    show logs that contain a string that matches 'regex'"
+echo "  -ln pattern  show logs with file name containing 'pattern'"
+echo "  -s command   pipe output through sed 'command'"
+echo "  -g regex     show only lines that match the string 'regex'"
+exit 1
+}
+
+#####################################################################
+## show services output
+#
+q2_services()
+{
+echo -n "services:"
+for opt in `ls $logdir`; do
+  if [ -d "$logdir/$opt" ]; then
+    echo -n " $opt"
+  fi
+done
+echo
+}
+
+#####################################################################
+## begin main processing here
+#
+me=$(basename $0)
+myver=v0.3
+mydir=$(dirname $0)
+: ${logdir:=/var/log/qmail}
+option=""
+command=""
+tai64n="| tai64nlocal"
+lesscmd="| less"
+grepcmd=""
+sedtrim="| sed '"
+sedparm=""
+dateparm=""
+namepattern=""
+contpattern=""
+service=""
+showfiles=""
+position_less=""
+
+while (( "$#" )); do
+  case $1 in
+    "-h" | "-help" | "--help" )
+      q1_usage
+      ;;
+    "-l" | "-list" | "--list" )
+      option="list"
+      shift
+      ;;
+    "-f" )
+      command="$command $1"
+      lesscmd=""
+      shift
+      ;; 
+    "-t" )
+      command="$command -n $2"
+      shift 2
+      ;;
+    "-nl" | "-noless" | "--noless" )
+      lesscmd=""
+      shift
+      ;;
+    "-nt" | "-notrim" | "--notrim" )
+      sedtrim=""
+      shift
+      ;;
+    "-d" | "-date" | "-dates" | "--date" | "--dates" )
+      dateparm=$2
+      shift 2
+      ;;
+    "-lc" | "-logcont" | "--logcont" )
+      contpattern=$2
+      shift 2
+      ;;
+    "-ln" | "-logname" | "--logname" )
+      namepattern=$2
+      shift 2
+      ;;
+    "-s" | "-sed" | "--sed" )
+      sedparm="$sedparm $2;"
+      shift 2
+      ;;
+    "-g" | "-grep" | "--grep" )
+      greppattern=$2
+      shift 2
+      ;;
+    * )
+      service=$1
+      shift
+      ;;
+  esac
+done
+
+a1_edit_parameters
+
+case $option in
+  "list" )
+    a2_list_log_files
+    ;;
+  * )
+    a3_show_logs_content
+    ;;
+esac
+
+exit 0
