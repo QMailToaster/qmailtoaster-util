@@ -1,0 +1,252 @@
+#!/bin/sh
+
+# Version 2.13 - May 29 2013
+# eric@datamatters.us
+# modified tar commands to conform to changes in version 1.23 (CentOS6)
+
+# Version 2.12 - March 5 2011
+# ejs@shubes.net
+# added $includemaildirs so that mail directories can be easily excluded.
+# Use rsync for that data, as it's much more efficient if there's a lot of it.
+# added $includesquirrelmail so that can be bypassed cleanly.
+
+# Version 2.11 - August 25 2009
+# jake@qmailtoaster.com
+# Removed space after the -p switch in the vpopmail database backup since the space was causing mysqldump
+# to function incorrectly and ask for the password.
+
+# Version 2.10 -  July 18 2009
+# shubes - Moved mysql variable setting into qt-config
+
+# Version 2.9  -  November 5th 2006
+# Backup of Squirrelmail address books and user prefs added.
+# Also now backing up your old tcp.smtp file, and we're now just going to backup the ENTIRE /var/qmai/control dir
+# Squirrelmail plugins now backed up
+# Old password for /admin-toaster/ now included
+# Now backs up old spam DB, if it's located at /home/vpopmail/.spamassassin
+# Added DJBDNS files to the backups, if they exist
+# Put a commented out section for the variables that have been moved into qt-config in case you're not using that method
+# Modified to work as a stand-alone script, as well as part of QTP
+
+# Version 2.8  -  November 3rd 2006
+# Script was modified by Eric 'shubes' to pick up user variables from qt-config
+
+# Version 2.7  -  March 22nd 2006
+# Script was modified by Jon Darrington, who found that there was an error in the 
+# rotational backup portion of the script, where the previous backup was also
+# included in the new archive. 
+
+# Version 2.6  -  February 17th 2006
+# Script modified by Warren Melnick - warren@icruise.com
+# Changed the mysqldump command to use database information taken from the vpopmail
+# mysql file instead of hardcoding it to the default toaster values.
+
+# Version 2.5  -  November 29th 2005
+# Script modified by Jake Vickers - jake@v2gnu.com
+# Going to put the ftp (curl) options back in, and add a couple other files from
+# /var/qmail/control to take into account the new modules added into Qmail-Toaster (namely
+# Simscan, warlord and the likes) to make (hopefully) a "mirror" of the mail server for
+# backup/restore purposes.
+# Also added option (rotate) to delete previous backup file before creating a new one
+# (Brent's addition, just modular-ized).
+
+# Version 2.4  -  November 28th 2005
+# Script modified by Brent Dacus - bdacus@midsouth.rr.com
+# Moved the backup tar up above the email so to see ls -l correctly
+# Also added rm to remove last backup.  Could not see keeping all the old backups.  Could be commented so to backup all the old backups inside the current backup.  Could Grow LARGE if done. 
+
+# Version 2.3  -  April 14th 2005
+
+# Script modified by Jake Vickers - jake@v2gnu.com
+# Commented out echo's to keep stuff from being sent to console
+# Changed '>> /dev/null' to '> /dev/null 2>&1' to keep stuff from going to console
+# Added a final tar-gzip at end of script to put everything into one nice package, and
+# remove backup files created by script. (Easier to CURL and handle later)
+ 
+# Version 2.2  -  May 22nd 2004
+
+#  Added backup of/var/qmail/users/assign file.
+#  Working on making a restore script.
+
+# VERSION 2.1  -  Feb 20th 2004
+
+#  qmailtoaster Backup script written by Nate Davis - nate@askdavis.com
+#  Originally written on Dec 4th 2003.  
+#  This script will backup your entire qmailtoaster install!
+
+#  Version 2.0 and up is CRON friendly.  Below you will find User Variables.
+# 
+#  I MAKE NO PROMISES THAT IT WILL WORK.  YOU HAVE BEEN WARNED!
+#  A few lines of code were copied from Nick Hemmesch <nick@ndhsoft.com>
+#  
+#  Changes added by MrBiTs - mrbits@terra.com.br
+#  Test if backup folder exists. If not, create it
+#  Added long date ( YYYYMMDDHHMM ) at filenames
+#  Changed filenames and backup folder for its variables
+
+################################
+#        User Variables        #
+################################
+
+me=${0##*/}
+myver=v2.14
+
+# If qt-config exists in the $PATH, the variables are set by that script.
+# Otherwise, if you use this as a stand-alone script, define the variables below.
+# Note, if the variables already have a value, then the value here will not be used.
+
+which qt-config >/dev/null 2>&1
+if [ $? == 0 ]; then
+  . qt-config -s
+fi
+: ${backupdest:=/backup/qmailbackup} # Where do you want the backups (no trailing slash)
+: ${useftp:=n}                       # Use FTP for backups?
+: ${ftpserver:=ftp://}               # Define your FTP account here (ftp://user:pass@ip)
+: ${emailinfo:=n}                    # Do you want emails to be sent to you with backup info?
+: ${email:=postmaster}               # Define email to be sent to (you@address.com)
+: ${removeprevious:=n}               # Do you want to remove the previous backup?
+: ${includemaildirs:=y}              # Do you want to include the actual mail?
+: ${includesquirrelmail:=y}          # Do you want to include squirrelmail?
+
+# set MYSQL variables, if not already set by qt-config
+: ${mysql_file:=~vpopmail/etc/vpopmail.mysql}
+if [ -f $mysql_file ]; then
+  : ${mysql_host:=$(cut -d\| -f1 < $mysql_file)}
+  : ${mysql_port:=$(cut -d\| -f2 < $mysql_file)}
+  : ${mysql_user:=$(cut -d\| -f3 < $mysql_file)}
+  : ${mysql_password=$(cut -d\| -f4 < $mysql_file)}
+  : ${mysql_database=$(cut -d\| -f5 < $mysql_file)}
+fi
+
+################################
+#  Actual Backup Script Below  #
+################################
+
+if [ ! -d $backupdest ] ; then
+  mkdir -p $backupdest
+fi
+
+#  Creating backup filenames with date
+DATENAME=`date +%Y%m%d%H%M`
+QMAILCONTROL="$DATENAME-qmailcontrol.tar.bz2"
+SQMAILPREFS="$DATENAME-squirrelmail-prefs.tar.bz2"
+SQMAILPLUGS="$DATENAME-squirrelmail-plugins.tar.bz2"
+QMAILADMINPASSWD="$DATENAME-qmailadminpasswd.tar.bz2"
+SPAMASSASSINFILES="$DATENAME-spamassassin-files.tar.bz2"
+DJBDNSFILES="$DATENAME-djbdnsfiles.tar.bz2"
+VPOPMAIL="$DATENAME-vpopmail.tar.bz2"
+DATABASE="$DATENAME-vpopmail.sql"
+gzmysqldata="$DATENAME-vpopmail.sql.gz"
+usersassign="$DATENAME-assign.tar.bz2"
+curlfile="$DATENAME-backup.tar.gz"
+
+if [ $removeprevious = y ] ; then
+# echo "Removing old backup file"
+  rm -rf $backupdest/*-backup.tar.gz
+fi
+
+starttime=`date +%a-%D-@-%X-%Z`
+
+if [ "$includesquirrelmail" == "n" ]; then
+  touch $backupdest/$SQMAILPREFS \
+        $backupdest/$SQMAILPLUGS
+else
+  #echo "Backing up Squirrelmail user prefs and address books"
+  tar -C /var/lib/squirrelmail/prefs \
+      -cjf $backupdest/$SQMAILPREFS * > /dev/null 2>&1
+
+  #echo "Backing up Squirrelmail plugins"
+  tar -C /usr/share/squirrelmail \
+      -cjf $backupdest/$SQMAILPLUGS plugins > /dev/null 2>&1
+fi
+
+#echo "Backing up qmail config files"
+# We now back up the ENTIRE control dir, per request
+tar -C /var/qmail \
+    -cjf $backupdest/$QMAILCONTROL control > /dev/null 2>&1
+
+#echo "Backing up old /admin-toaster/ password"
+tar -C /usr/share/toaster/include \
+    -cjf $backupdest/$QMAILADMINPASSWD admin.pass admin.htpasswd 
+
+#echo "Backing up SpamAssassin files"
+tar -C /home/vpopmail \
+    -cjf $backupdest/$SPAMASSASSINFILES .spamassassin > /dev/null 2>&1
+
+#echo "Backing up DJBDNS files"
+if [ -d /var/djbdns/service/dnscache ]; then
+  tar -C /var/djbdns/service/dnscache \
+      -cjf $backupdest/$DJBDNSFILES env root > /dev/null 2>&1
+fi
+
+if [ "$includemaildirs" == "n" ]; then
+  exclude="--exclude Maildir"
+else
+  exclude=""
+fi
+#echo "Backing up vpopmail domains"
+tar $exclude -cjf $backupdest/$VPOPMAIL /home/vpopmail/domains > /dev/null 2>&1
+
+#echo "Backing up MYSQL Data"
+if [ $mysql_port == "0" ]; then
+  mysql_portparm=""
+else
+  mysql_portparm="-P $mysql_port"
+fi
+mysqldump -u $mysql_user \
+          -p$mysql_password \
+          -h $mysql_host \
+          $mysql_portparm \
+          $mysql_database > $backupdest/$DATABASE
+gzip $backupdest/$DATABASE 2>&1
+
+#echo "Backup /var/qmail/users/assign file"
+tar -cjf $backupdest/$usersassign /var/qmail/users/assign > /dev/null 2>&1
+
+#echo "Putting all backup files into one large archive"
+tar -C $backupdest \
+    -czf $curlfile $DATENAME-* > /dev/null 2>&1
+rm -rf $QMAILCONTROL
+rm -rf $SQMAILPREFS
+rm -rf $SQMAILPLUGS
+rm -rf $QMAILADMINPASSWD
+rm -rf $SPAMASSASSINFILES
+rm -rf $DJBDNSFILES
+rm -rf $VPOPMAIL
+rm -rf $gzmysqldata
+rm -rf $usersassign
+rm -rf $DATABASE
+
+endtime=`date +%a-%D-@-%X-%Z`
+
+if [ $emailinfo = y ] ; then
+echo "$me $myver" >/tmp/emailmsg.txt
+echo "The Toaster Backup has Run.  Please verify that it did it correctly." >> /tmp/emailmsg.txt
+echo " " >> /tmp/emailmsg.txt
+echo " $me $myver" >> /tmp/emailmsg.txt
+echo " " >> /tmp/emailmsg.txt
+echo "Backup Start Time: $starttime" >> /tmp/emailmsg.txt
+echo " " >> /tmp/emailmsg.txt
+echo "Backup End Time: $endtime" >> /tmp/emailmsg.txt
+echo "  " >> /tmp/emailmsg.txt
+echo "Backup Contents: " >> /tmp/emailmsg.txt
+tar -tzvf $curlfile >> /tmp/emailmsg.txt
+echo " " >> /tmp/emailmsg.txt
+echo "ls -lh command on $backupdest" >> /tmp/emailmsg.txt
+echo " " >> /tmp/emailmsg.txt
+ls -lh $backupdest >> /tmp/emailmsg.txt
+cat /tmp/emailmsg.txt | mail -s"Toaster Backup Executed $endtime" $email
+rm -f /tmp/emailmsg.txt
+fi
+
+#echo " $me $myver"
+
+if [ $useftp = y ] ; then
+  curl -T $backupdest/$curlfile $ftpserver/$curlfile
+  echo " Backup has been uploaded to the FTP Server and"
+  echo " is also located in: $backupdest"
+else
+  echo " Backup is complete and located in: $backupdest"
+fi
+
+exit 0
