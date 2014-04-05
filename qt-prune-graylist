@@ -1,0 +1,133 @@
+#!/bin/bash
+#
+# Copyright (C) 2010-2013 Eric Shubert <eric@datamatters.us>
+#
+# This script removes old/expired entries in spamdyke's graylist tree.
+#
+# Original script written by David Stiller <>, posted on the spamdyke list.
+# Enhanced by shubes to obtain parameters from spamdyke configuration,
+# and do a more thorough job of pruning.
+#
+#########################################################################
+# change log
+# 11/23/13 shubes - added count for empty vs used files
+# 02/06/10 shubes - optimized a tad
+# 01/26/10 shubes - created from David Stiller's greylist-clean.sh script
+#########################################################################
+
+# This should be the only thing you might need to change
+# Location of spamdyke configuration file
+sdconf=/etc/spamdyke/spamdyke.conf
+
+#########################################################################
+# check/obtain parameter values
+#########################################################################
+
+a2_check_parameters(){
+
+if [ ! -f "$sdconf" ]; then
+  echo "$me - config file \"$sdconf\" does not exist"
+  exit 1
+fi
+
+gldir=$(q21_get_spamdyke_parm graylist-dir)
+glmax=$(q21_get_spamdyke_parm graylist-max-secs)
+
+if [ ! "$silent" ]; then
+  echo "$me processing graylist tree at $gldir ..."
+  echo "$me pruning entries older than $glmax seconds ..."
+fi
+}
+
+#########################################################################
+# get a spamdyke configuration parameter
+#########################################################################
+
+q21_get_spamdyke_parm(){
+
+sdparm=$(grep "$1=" $sdconf)
+echo "${sdparm#$1=}"
+
+}
+
+#########################################################################
+# process each domain in the graylist tree
+#########################################################################
+
+a5_process_domain(){
+
+if [ ! "$silent" ]; then
+  domname=${dompath##*/}
+  echo "$me processing domain $domname ..."
+  domtot=$(q51_count_graylist_entries)
+  echo "$me $domname - $domtot entries found"
+fi
+
+# delete empty files that are expired (corresponding to spam)
+domdls=$(find $dompath -type f -empty -mmin +$[$glmax/60] -exec rm {} \; -print | wc -l)
+
+# delete non-empty files that are expired (corresponding to ham)
+domdlh=$(find $dompath -type f -mmin +$[$glmax/60] -exec rm {} \; -print | wc -l)
+
+# delete empty directories
+domdld=$(find $dompath -depth -mindepth 2 -type d -empty -exec rmdir {} \; -print | wc -l)
+
+if [ ! "$silent" ]; then
+  domrem=$(q51_count_graylist_entries)
+  echo "$me $domname - $domdls spam entries removed"
+  echo "$me $domname - $domdlh ham entries removed"
+  echo "$me $domname - $domdld empty directories removed"
+  echo "$me $domname - $domrem graylisting entries remain"
+  graydom=$[$graydom+1]
+  graytot=$[$graytot+$domtot]
+  graydls=$[$graydls+$domdls]
+  graydlh=$[$graydlh+$domdlh]
+  graydld=$[$graydld+$domdld]
+  grayrem=$[$grayrem+$domrem]
+fi
+}
+
+#########################################################################
+# count the number of files (entries) in the graylist tree
+#########################################################################
+
+q51_count_graylist_entries(){
+
+echo $(find $dompath -type f | wc -l)
+}
+#########################################################################
+# main execution begins here
+#########################################################################
+
+me=${0##*/}
+myver=v0.3.0
+unset silent
+if [ ! -z "$1" ]; then
+  case $1 in
+    -s )
+      silent=$1
+      ;;
+    * )
+      echo "$me usage: $me [-s]"
+      exit 2
+      ;;
+  esac
+else
+  echo "$me $myver"
+fi
+
+a2_check_parameters
+
+for dompath in $(find $gldir -mindepth 1 -maxdepth 1 -type d); do
+  a5_process_domain
+done
+
+if [ ! "$silent" ]; then
+  echo "$me total - $graydom domains processed"
+  echo "$me total - $graytot entries found"
+  echo "$me total - $graydls spam entries removed"
+  echo "$me total - $graydlh ham entries removed"
+  echo "$me total - $graydld empty directories removed"
+  echo "$me total - $grayrem graylisting entries remain"
+fi
+exit 0
