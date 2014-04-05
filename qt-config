@@ -1,0 +1,144 @@
+#!/bin/bash
+#
+# Copyright (C) 2006-2014 Eric Shubert <ejs@shubes.net>
+#
+# Set configuration variables for qmailtoaster-util scripts
+# Used primarily (only?) by qt-backup now that qtp-newmodel is gone.
+#
+###################################################################
+# change log
+# 04/05/14 shubes - modified for qmailtoaster-util package
+# 03/05/11 shubes - added variables for qtp-backup to bypass Maildirs, squirrelmail
+# 08/14/09 shubes - changed for single OVERLAY (FUSE) unionfs filesystem
+# 07/18/09 shubes - added vpopmail backend access variables, from qtp-backup
+# 07/07/09 shubes - added work-around for package names with arch appended
+# 02/03/09 Jake   - Changed download paths
+# 02/26/08 shubes - fixed kernelver variable for n.n.n.n versions
+# 02/08/08 Jake   - Updated links for downloading of packages
+# 01/07/08 shubes - added UNIONROOT for qtp-newmodel
+#                 - renamed a1 <-> a2 so they're in order
+# 06/27/07 Jake   - Moved a2_backup_variables to head of script to make
+#                 - it easier for user to set these variables.
+#                 - Added more comments for clarity
+# 03/06/07 shubes - added x01_compare_versions function
+# 01/13/07 shubes - added RPMBUILD_OPT_DIR variable
+# 01/04/07 shubes - added QMT_DEV variable
+# 01/03/07 shubes - added RPMBUILD_OPTIONS variable
+###################################################################
+
+#####################################################################
+## set variables for qtp-backup processing
+#
+a1_backup_variables(){
+
+# backupdest is the Backup Destination on your HD (don't include trailing /)
+# If the dir does not exist, it will be created for you.
+# ex:  backupdest=/backuphd/toasterbackup
+export backupdest=/backup/qmailbkup
+
+# FTP Information and Destination
+# This will upload the files backed up via FTP using Curl ( y or n )
+export useftp=n
+
+# Syntax for ftpserver:  ftp://user:pass@ftp.server.com/folder  (WITHOUT Trailing /)
+export ftpserver=ftp://
+
+# E-Mail Information and Destination
+# This will Send you an e-mail after the Cron Job Runs each time. ( y or n )
+export emailinfo=y
+
+# Syntax for email:  your@emailaddress.com
+export email=postmaster
+
+# Remove previous backup file before creating a new one? ( y or n )
+export removeprevious=n
+
+# variable for including Maildirs (actual mail) or not ( y or n )
+export includemaildirs=y
+
+# variable for including squirrelmail stuff or not ( y or n )
+export includesquirrelmail=y
+}
+
+###################################################################
+## set variables for vpopmail backend access
+#
+a3_vpopmail_variables(){
+
+mysql_file=~vpopmail/etc/vpopmail.mysql
+
+if [ -f $mysql_file ]; then
+  mysql_host=$(cut -d"|" -f1 < $mysql_file)
+  mysql_port=$(cut -d"|" -f2 < $mysql_file)
+  mysql_user=$(cut -d"|" -f3 < $mysql_file)
+  mysql_password=$(cut -d"|" -f4 < $mysql_file)
+  mysql_database=$(cut -d"|" -f5 < $mysql_file)
+else
+  unset mysql_host \
+        mysql_port \
+        mysql_user \
+        mysql_password \
+        mysql_database
+fi
+
+ldap_file=~vpopmail/etc/vpopmail.ldap
+
+if [ -f $ldap_file ]; then
+  ldap_host=$(cut -d"|" -f1 < $ldap_file)
+  ldap_port=$(cut -d"|" -f2 < $ldap_file)
+  ldap_user="$(cut -d"|" -f3 < $ldap_file)"
+  ldap_password="$(cut -d"|" -f4 < $ldap_file)"
+  ldap_database="$(cut -d"|" -f5 < $ldap_file)"
+else
+  unset ldap_host \
+        ldap_port \
+        ldap_user \
+        ldap_password \
+        ldap_database
+fi
+}
+
+#####################################################################
+## main execution begins here
+#
+
+myname=qt-config
+myver=v0.4
+
+if [ "${0##*/}" == "$myname" ]; then
+  retexit=exit
+else
+  retexit=return
+fi
+
+unset silent
+if [ ! -z "$1" ]; then
+  case $1 in
+    -s )
+      silent=$1
+      ;;
+    * )
+      echo "$myname usage: $myname [-s]"
+      $retexit 8
+      ;;
+  esac
+else
+  echo "$myname $myver"
+fi
+
+a1_backup_variables
+
+a3_vpopmail_variables
+
+if [ ! $silent ]; then
+  echo "backupdest=$backupdest"
+  echo "useftp=$useftp"
+  echo "ftpserver=$ftpserver"
+  echo "emailinfo=$emailinfo"
+  echo "email=$email"
+  echo "removeprevious=$removeprevious"
+  echo "mysql_user=$mysql_user"
+  echo "ldap_user=$ldap_user"
+fi
+
+$retexit 0
