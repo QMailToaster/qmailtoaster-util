@@ -15,23 +15,23 @@ case "$1" in
 	start)
 		echo "Starting spamd...."
 		if svok /var/qmail/supervise/spamd ; then
-			svc -u /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+			svc -u /var/qmail/supervise/spamd 
 		else
 			echo "supervise for spamd not running!"
 		fi
 		echo
 		sleep 2
 		svstat /var/qmail/supervise/spamd
-		svstat /var/qmail/supervise/spamd/log
+#		svstat /var/qmail/supervise/spamd/log
 		;;
 	
 	stop)
 		echo "Stopping spamd...."
-		svc -d /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+		svc -d /var/qmail/supervise/spamd
 		sleep 2
 		echo
 		svstat /var/qmail/supervise/spamd
-		svstat /var/qmail/supervise/spamd/log
+#		svstat /var/qmail/supervise/spamd/log
 		;;
 
 	pause)
@@ -48,29 +48,29 @@ case "$1" in
 		sleep 2
 		echo
 		svstat /var/qmail/supervise/spamd
-		svstat /var/qmail/supervise/spamd/log
+#		svstat /var/qmail/supervise/spamd/log
 		;;
 
 	restart)
 		echo "Restarting spamd...."
-		svc -d /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
-		svc -t /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
-		svc -u /var/qmail/supervise/spamd /var/qmail/supervise/spamd/log
+		svc -d /var/qmail/supervise/spamd
+		svc -t /var/qmail/supervise/spamd
+		svc -u /var/qmail/supervise/spamd
 		sleep 2
 		echo
 		svstat /var/qmail/supervise/spamd
-		svstat /var/qmail/supervise/spamd/log
+#		svstat /var/qmail/supervise/spamd/log
 		;;
 
 	stat)
 		svstat /var/qmail/supervise/spamd
-		svstat /var/qmail/supervise/spamd/log
+#		svstat /var/qmail/supervise/spamd/log
 		echo
 		;;
 
 	status) 
 		svstat /var/qmail/supervise/spamd
-		svstat /var/qmail/supervise/spamd/log
+#		svstat /var/qmail/supervise/spamd/log
 		echo
 		;;
 
@@ -90,5 +90,5 @@ HELP
   		  exit 1
    		 ;;
 esac
-	exit 0
 
+exit 0
