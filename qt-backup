@@ -185,7 +185,8 @@ else
   exclude=""
 fi
 #echo "Backing up vpopmail domains"
-tar $exclude -cjf $backupdest/$VPOPMAIL /home/vpopmail/domains > /dev/null 2>&1
+tar -C /home/vpopmail \
+    -cjf $backupdest/$VPOPMAIL domains > /dev/null 2>&1
 
 #echo "Backing up MYSQL Data"
 if [ $mysql_port == "0" ]; then
@@ -197,13 +198,15 @@ mysqldump -u $mysql_user \
           -p$mysql_password \
           -h $mysql_host \
           $mysql_portparm \
-          $mysql_database > $backupdest/$DATABASE
+          $mysql_database \
+          > $backupdest/$DATABASE
 gzip $backupdest/$DATABASE 2>&1
 
 #echo "Putting all backup files into one large archive"
 tar --create \
     --gzip \
-    --file $curlfile \
+    --file $backupdest/$curlfile \
+    --directory $backupdest \
       $QMAILCONTROL \
       $SQMAILPREFS \
       $SQMAILPLUGS \
@@ -213,34 +216,34 @@ tar --create \
       $gzmysqldata \
       > /dev/null 2>&1
 rm -rf \
-      $QMAILCONTROL \
-      $SQMAILPREFS \
-      $SQMAILPLUGS \
-      $QMAILADMINPASSWD \
-      $SPAMASSASSINFILES \
-      $VPOPMAIL \
-      $gzmysqldata \
+      $backupdest\$QMAILCONTROL \
+      $backupdest\$SQMAILPREFS \
+      $backupdest\$SQMAILPLUGS \
+      $backupdest\$QMAILADMINPASSWD \
+      $backupdest\$SPAMASSASSINFILES \
+      $backupdest\$VPOPMAIL \
+      $backupdest\$gzmysqldata \
 
 endtime=`date +%a-%D-@-%X-%Z`
 
 if [ $emailinfo = y ] ; then
-echo "$me $myver" >/tmp/emailmsg.txt
-echo "The Toaster Backup has Run.  Please verify that it did it correctly." >> /tmp/emailmsg.txt
-echo " " >> /tmp/emailmsg.txt
-echo " $me $myver" >> /tmp/emailmsg.txt
-echo " " >> /tmp/emailmsg.txt
-echo "Backup Start Time: $starttime" >> /tmp/emailmsg.txt
-echo " " >> /tmp/emailmsg.txt
-echo "Backup End Time: $endtime" >> /tmp/emailmsg.txt
-echo "  " >> /tmp/emailmsg.txt
-echo "Backup Contents: " >> /tmp/emailmsg.txt
-tar -tzvf $curlfile >> /tmp/emailmsg.txt
-echo " " >> /tmp/emailmsg.txt
-echo "ls -lh command on $backupdest" >> /tmp/emailmsg.txt
-echo " " >> /tmp/emailmsg.txt
-ls -lh $backupdest >> /tmp/emailmsg.txt
-cat /tmp/emailmsg.txt | mail -s"Toaster Backup Executed $endtime" $email
-rm -f /tmp/emailmsg.txt
+  echo "$me $myver" >/tmp/emailmsg.txt
+  echo "The Toaster Backup has Run.  Please verify that it did it correctly." >> /tmp/emailmsg.txt
+  echo " " >> /tmp/emailmsg.txt
+  echo " $me $myver" >> /tmp/emailmsg.txt
+  echo " " >> /tmp/emailmsg.txt
+  echo "Backup Start Time: $starttime" >> /tmp/emailmsg.txt
+  echo " " >> /tmp/emailmsg.txt
+  echo "Backup End Time: $endtime" >> /tmp/emailmsg.txt
+  echo "  " >> /tmp/emailmsg.txt
+  echo "Backup Contents: " >> /tmp/emailmsg.txt
+  tar -tzvf $backupdest/$curlfile >> /tmp/emailmsg.txt
+  echo " " >> /tmp/emailmsg.txt
+  echo "ls -lh command on $backupdest" >> /tmp/emailmsg.txt
+  echo " " >> /tmp/emailmsg.txt
+  ls -lh $backupdest >> /tmp/emailmsg.txt
+  cat /tmp/emailmsg.txt | mail -s"Toaster Backup Executed $endtime" $email
+  rm -f /tmp/emailmsg.txt
 fi
 
 if [ $useftp = y ] ; then
