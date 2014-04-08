@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Version 2.14 - Apr  7 2014
+# eric@datamatters.us
+# fixed problems introduced in 2.13 with use of -C
+# removed djbdns files from backup
+# combined qmail/users/assign with qmail/control
+
 # Version 2.13 - May 29 2013
 # eric@datamatters.us
 # modified tar commands to conform to changes in version 1.23 (CentOS6)
@@ -122,22 +128,22 @@ fi
 #  Actual Backup Script Below  #
 ################################
 
+#echo " $me $myver"
+
 if [ ! -d $backupdest ] ; then
   mkdir -p $backupdest
 fi
 
-#  Creating backup filenames with date
+#  assigning backup filenames with date
 DATENAME=`date +%Y%m%d%H%M`
-QMAILCONTROL="$DATENAME-qmailcontrol.tar.bz2"
+QMAILCONTROL="$DATENAME-qmailcontrolusers.tar.bz2"
 SQMAILPREFS="$DATENAME-squirrelmail-prefs.tar.bz2"
 SQMAILPLUGS="$DATENAME-squirrelmail-plugins.tar.bz2"
 QMAILADMINPASSWD="$DATENAME-qmailadminpasswd.tar.bz2"
 SPAMASSASSINFILES="$DATENAME-spamassassin-files.tar.bz2"
-DJBDNSFILES="$DATENAME-djbdnsfiles.tar.bz2"
 VPOPMAIL="$DATENAME-vpopmail.tar.bz2"
 DATABASE="$DATENAME-vpopmail.sql"
 gzmysqldata="$DATENAME-vpopmail.sql.gz"
-usersassign="$DATENAME-assign.tar.bz2"
 curlfile="$DATENAME-backup.tar.gz"
 
 if [ $removeprevious = y ] ; then
@@ -152,18 +158,18 @@ if [ "$includesquirrelmail" == "n" ]; then
         $backupdest/$SQMAILPLUGS
 else
   #echo "Backing up Squirrelmail user prefs and address books"
-  tar -C /var/lib/squirrelmail/prefs \
-      -cjf $backupdest/$SQMAILPREFS * > /dev/null 2>&1
+  tar -C /var/lib/squirrelmail \
+      -cjf $backupdest/$SQMAILPREFS prefs > /dev/null 2>&1
 
   #echo "Backing up Squirrelmail plugins"
   tar -C /usr/share/squirrelmail \
       -cjf $backupdest/$SQMAILPLUGS plugins > /dev/null 2>&1
 fi
 
-#echo "Backing up qmail config files"
+#echo "Backing up qmail config users files"
 # We now back up the ENTIRE control dir, per request
 tar -C /var/qmail \
-    -cjf $backupdest/$QMAILCONTROL control > /dev/null 2>&1
+    -cjf $backupdest/$QMAILCONTROL control users > /dev/null 2>&1
 
 #echo "Backing up old /admin-toaster/ password"
 tar -C /usr/share/toaster/include \
@@ -172,12 +178,6 @@ tar -C /usr/share/toaster/include \
 #echo "Backing up SpamAssassin files"
 tar -C /home/vpopmail \
     -cjf $backupdest/$SPAMASSASSINFILES .spamassassin > /dev/null 2>&1
-
-#echo "Backing up DJBDNS files"
-if [ -d /var/djbdns/service/dnscache ]; then
-  tar -C /var/djbdns/service/dnscache \
-      -cjf $backupdest/$DJBDNSFILES env root > /dev/null 2>&1
-fi
 
 if [ "$includemaildirs" == "n" ]; then
   exclude="--exclude Maildir"
@@ -200,22 +200,26 @@ mysqldump -u $mysql_user \
           $mysql_database > $backupdest/$DATABASE
 gzip $backupdest/$DATABASE 2>&1
 
-#echo "Backup /var/qmail/users/assign file"
-tar -cjf $backupdest/$usersassign /var/qmail/users/assign > /dev/null 2>&1
-
 #echo "Putting all backup files into one large archive"
-tar -C $backupdest \
-    -czf $curlfile $DATENAME-* > /dev/null 2>&1
-rm -rf $QMAILCONTROL
-rm -rf $SQMAILPREFS
-rm -rf $SQMAILPLUGS
-rm -rf $QMAILADMINPASSWD
-rm -rf $SPAMASSASSINFILES
-rm -rf $DJBDNSFILES
-rm -rf $VPOPMAIL
-rm -rf $gzmysqldata
-rm -rf $usersassign
-rm -rf $DATABASE
+tar --create \
+    --gzip \
+    --file $curlfile \
+      $QMAILCONTROL \
+      $SQMAILPREFS \
+      $SQMAILPLUGS \
+      $QMAILADMINPASSWD \
+      $SPAMASSASSINFILES \
+      $VPOPMAIL \
+      $gzmysqldata \
+      > /dev/null 2>&1
+rm -rf \
+      $QMAILCONTROL \
+      $SQMAILPREFS \
+      $SQMAILPLUGS \
+      $QMAILADMINPASSWD \
+      $SPAMASSASSINFILES \
+      $VPOPMAIL \
+      $gzmysqldata \
 
 endtime=`date +%a-%D-@-%X-%Z`
 
@@ -238,8 +242,6 @@ ls -lh $backupdest >> /tmp/emailmsg.txt
 cat /tmp/emailmsg.txt | mail -s"Toaster Backup Executed $endtime" $email
 rm -f /tmp/emailmsg.txt
 fi
-
-#echo " $me $myver"
 
 if [ $useftp = y ] ; then
   curl -T $backupdest/$curlfile $ftpserver/$curlfile

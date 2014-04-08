@@ -1,0 +1,198 @@
+#!/bin/sh
+
+################################################################################
+# PLEASE READ THE COMMENTS!!! They contain important info! You've been warned! #
+################################################################################
+
+# Version 3.0.4 - Apr 07th, 2014 - Eric Shubert <eric@datamatters.us>
+# fixed problems with -C option
+# combined users/assign with control file
+
+# Version 3.0.3 - May 29th, 2013 - Eric Shubert <eric@datamatters.us>
+# fixed tar commands for COS6.
+
+# Version 3.0.2 - March 5th, 2011 - Eric Shubert <ejs@shubes.net>
+# fixed so that missing pieces don't cause a failure
+# tar files directly to where they go, instead of copying them from /root
+
+# Version 3.0.1 - October 30th, 2007 - Jake Vickers <jake@qmailtoaster.com>
+# Fixed a cp -rf command to a cp -af to retain the time stamps of the messages.
+# Thanks to Aaron Sprulock for that one!
+
+# Version 3.0  -  October 14th, 2007 - Jake Vickers <jake@qmailtoaster.com>
+# Changed a couple options - mysqlroot password is no longer required to be
+# hard coded, it asks.
+# The script will now backup the original /var/qmail/control files
+# before restoring the backup copies.
+# The script now also tells you that the backup file NEEDS to be in /root
+# to continue.
+
+# Version 2.9  -  November 7th 2006  - Jake Vickers (jake@v2gnu.com)
+# I'm changing the format of the comments (newest at top), as well as changing the versioning to match the backup
+# script versioning for ease of identification.
+# This revision adds a few more files to be restored, since they are now backed up in the backup script
+# To highlight a few of the restored files: SquirrelMail prefs and address books are now restored; DJBDNS is now restored (if it exists);
+# all your control files are now restored; the /admin-toaster/ password is now restored; SpamAssassin stuff is now restored
+# There are a few more things that get restored as well, but those are the highlights.
+
+# Version 1.0  -  April 14th 2005
+
+# QMail restore script written by Jake Vickers - jake@v2gnu.com
+
+# This script is provided AS-IS, with no warranties expressed or implied, no promises,
+# no good intentions, or any other way you could think of to try and blame something on me.
+# Use this script at your own risk, and be aware it may not work for you. 
+
+# This script may be obtained from http://qtp.qmailtoaster.com
+# This package will include any scripts I obtained from other people to use and/or modify.
+# Backups are created with a modified version of Nate Davis's backup script
+# which is no longer on his website.
+# This script also uses the queue_fix Python program written by
+# Charles Cazabon - pqt@discworld.dyndns.org
+
+# To restore your QMail installation, start with a new machine, and do an install of
+# Qmail. If you use any other install schemes, you may need to edit
+# some of this script, and/or some other files. Most notable is the /var/qmail/users/assign file.
+# The UID/GID of the vpopmail user must be correct with the machine you are trying to install on!
+# This script assumes a vpopmail UID/GID of 89:89
+# This script assumes your backup file is on the /root directory, and was created using the
+# naming scheme in my modified backup script. Edit to suit your wants/needs.
+# This script also assumes you have Apache back up and running correctly. You'll need to put the 
+# includes for qmail in on your own
+# This script also assumes the new server will have the same IP address as the old one. If not,
+# you'll need to edit the qmail control files on your own.
+
+# Version 1.1 - July 18th 2005
+# Removed the mysqldump importing. Didn't work with the new toaster system on my machine,
+# although it may still work on yours. Also added the command to create the database before 
+# dumping info into it <grin> Hate it when I miss things!
+# Last thing added was the conversion of the old .qmail-alias format to the MySQL format now used.
+
+echo ""
+echo "This is the qt-restore script."
+echo "It comes with no warranties, guarantees, or anything else."
+echo "It may NOT work for you. It has not been tested thoroughly."
+echo "If you have an issue please email the qmailtoaster list"
+echo "so it can be resolved."
+echo ""
+echo "Your backup file will NEED to be in /root to continue...."
+echo "This script -WILL- also overwrite -ANY- qmail configs, users, domains, etc. "
+echo "that you many have previously configured."
+echo ""
+echo "Do you wish to continue? y/[n]"
+asking=n
+read asking
+if [ "$asking" != "y" ]; then
+  echo ""
+  echo "Aborting, per user request."
+  exit 1
+fi
+
+#################################################
+#      Set the variables below!!!
+#################################################
+
+read -p "Please enter your MySQL Root password: " mysqlrootpass
+
+DATENAME=`date +%Y%m%d%H%M`
+
+#################################################
+#      I can't think of any more variables I 
+#      need, so here's the restore script!
+#################################################
+
+# We're stopping QMail (if it's running), and uncompressing all the archives.
+# Then we move them back to where they're supposed to be
+
+cd /root
+if test -e /root/queue-repair-0.9.0/queue_repair.py
+	then
+		echo "Queue repair exists for use"
+	else
+		echo "Retreiving and installing Queue Repair python script"
+		wget "http://pyropus.ca/software/queue-repair/queue-repair-0.9.0.tar.gz"
+		tar -xzvf queue-repair-0.9.0.tar.gz
+fi
+
+qmailctl stop
+echo "Backing up old /var/qmail/control files before restoring.... (they will be in /root)"
+tar -C /var/qmail/ -czvf /root/qmail-control-$DATENAME.tar.gz control
+echo
+echo "Extracting tarballs from backup"
+tar -xzvf *-backup.tar.gz
+echo
+echo "Restoring qmail/control, qmail/users files"
+rm -rf /var/qmail/control \
+       /var/qmail/users
+tar -C /var/qmail/ -xjvf *-qmailcontrolusers.tar.bz2
+echo
+echo "Restoring vpopmail domains"
+rm -rf /home/vpopmail/domains
+tar -C / -xjvf *-vpopmail.tar.bz2
+echo
+echo "Restoring spamassassin files"
+rm -rf /home/vpopmail/.spamassassin
+tar -C /home/vpopmail/ -xjvf *-spamassassin-files.tar.bz2
+echo
+if [ -s *-squirrelmail-prefs.tar.bz2 ]; then
+  echo "Restoring Squirrelmail prefs and address books"
+  rm -rf /var/lib/squirrelmail/prefs
+  tar -C /var/lib/squirrelmail/ -xjvf *-squirrelmail-prefs.tar.bz2
+  echo
+fi
+if [ -s *-squirrelmail-plugins.tar.bz2 ]; then
+  echo "Restoring Squirrelmail plugins"
+  rm -rf /usr/share/squirrelmail/plugins
+  tar -C /usr/share/squirrelmail/ -xjvf *-squirrelmail-plugins.tar.bz2
+  echo
+fi
+echo "Restoring admin-toaster password"
+if [ -e /usr/share/toaster/include/admin.pass ]; then
+  echo "Backing up original admin.pass file as admin.pass.orig"
+  mv -f /usr/share/toaster/include/admin.pass /usr/share/toaster/include/admin.pass.orig
+fi
+if [ -e /usr/share/toaster/include/admin.htpasswd ]; then
+  echo "Backing up original admin.htpasswd file as admin.htpasswd.orig"
+  mv -f /usr/share/toaster/include/admin.htpasswd /usr/share/toaster/include/admin.htpasswd.orig
+fi
+tar -C /usr/share/toaster/include/ -xjvf *-qmailadminpasswd.tar.bz2
+echo
+echo "Restoring mysql database"
+gunzip -d *-vpopmail.sql.gz
+# We had a quirky problem - if the database file had an extension, it didn't get imported right
+mv *-vpopmail.sql vpopmail
+
+########################################################################################
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#       This next command destroys anything you may have in the vpopmail MySQL
+#       database up to this point! We warned you!
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+########################################################################################
+
+mysqladmin -uroot -p$mysqlrootpass flush-tables
+mysqldump -uroot -p$mysqlrootpass vpopmail > /usr/share/toaster/include/vpopmail.orig
+mysqladmin drop -f vpopmail -uroot -p$mysqlrootpass
+mysqladmin create vpopmail -uroot -p$mysqlrootpass
+
+mysql -uroot -p$mysqlrootpass vpopmail < vpopmail
+mysqladmin -uroot -p$mysqlrootpass reload
+mysqladmin -uroot -p$mysqlrootpass refresh
+# Now we're going to change the permissions on the queue_repair utility, and run it to fix
+# any problems that may have been missed, and to fixed iNodes for the mail that was still in
+# the queue when the archive was created on the original machine
+chmod 777 queue-repair-0.9.0/queue_repair.py
+queue-repair-0.9.0/queue_repair.py -r
+/var/qmail/bin/qmail-newu
+
+mysqladmin -uroot -p$mysqlrootpass reload
+mysqladmin -uroot -p$mysqlrootpass refresh
+service httpd reload
+
+###  Convert old .qmail aliases to new format
+#/home/vpopmail/bin/dotqmail2valias -a
+qmailctl cdb
+qmailctl start
+echo "Restore Complete!"
+# Now everything should be up and running again,
+# with everything restored to when you did the backup. 
+exit 0
