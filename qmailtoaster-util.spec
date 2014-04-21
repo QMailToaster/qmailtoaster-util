@@ -152,6 +152,7 @@ It replaces/obsoletes the former qmailtoaster-plus package.
 # files
 %attr(0755, root, root)  %{BIN_DIR}/*
 %config(noreplace)       %{CONF_DIR}/*
+                         %{DOC_DIR}/*
 
 # symlinks
 %{BIN_LINK}/*
