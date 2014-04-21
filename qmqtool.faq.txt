@@ -1,0 +1,112 @@
+Want to just get going ?  Try: qmqtool -l
+
+
+
+Q. How do I install qmqtool ?
+A. vi qmqtool, and ensure the path and syntax to "ps" and "grep" are
+	compatible with your operating system (defined at the top)
+   cp qmqtool /usr/local/script/
+   chmod 0700 /usr/local/script/qmqtool
+   chown root /usr/local/script/qmqtool
+
+Q. Why arent messages that I just expired going away ?
+A. After expiring, you can force the queue to run by:
+   /var/qmail/bin/qmail-tcpok
+   svc -a /service/qmail-send/
+A. If you have already forced qmail to re-run the queue, you may be
+   running into a scenario where qmail-remote is caching an
+   unresponsive SMTP server, and messages after the first are kept in
+   the queue to be tried later.  There's no solution to this problem,
+   besides to simply delete the messages instead of expire.
+
+Q. Do I really have to restart qmail-send after using -d ?
+A. You should.  qmail doesnt know you've removed the message from the
+   queue, and will keep trying to send it.  Each time it tries, you'll
+   see a complaint in your log file.
+
+Q. What is the difference between 'expiring' and 'deleting' messages?
+A. qmail remembers what messages are in it's queue.  If you tinker
+   with the queue manually (via deleting a message), you will have
+   to restart qmail-send.  By simply expiring the message, you trick
+   qmail into thinking the message has been in the queue too long
+   (about double the queuelifetime), and qmail gracefully removes the
+	message for you.
+
+Q. How can I list all messages that have the subject of
+   "Free Pupil Enlargment" ?
+A. qmqtool -f '^Subject: Free Pupil Enlargment'
+   will do a pretty good job; since qmqtool's -f argument searches
+   the entire message, this could list an incorrect message if the
+   string 'Subject: Free Pupil Enlargment' is found in the body of
+   the email and not in the header.
+
+Q. How can I delete all messages with a subject of "Pupil Enlargment"?
+A. qmqtool -d -f '^Subject: Pupil Enlargment!'`
+   restart qmail-send.
+
+Q. How can I show how many queued messages a host has sent?
+A. If you've got a plain-vanilla qmail installation, try: qmqtool -i
+   If you've got frontend servers that relay mail to backend servers,
+   qmqtool -i -n 2
+   You can also try qmqtool -i -V
+
+Q. How can I keep my queue clean of soon-to-be double bounces?
+A. Enter the following single line into root's crontab (adjust for
+   syntax and path differences, of course):
+   17,47 * * * * qmqtool -e -o 2 -f 'invoked for bounce|^Subject: failure notice' >/dev/null 2>&1
+   This is not 100% accurate; some legitimate bounce messages will be
+   deleted.
+
+Q. How can I delete all messages from my remote and local queue ?
+A. qmqtool -d -f .
+   restart qmail-send.
+
+Q. How can I delete multiple messages at a time ?
+A. qmqtool -d 1234,5678
+
+Q. How can I find out who most of my remotely queued messages are
+   destined for?
+A. qmqtool -R | awk '/Recipient:/ { print $3 }' | sort | uniq -c | sort -n
+   (your awk, sort, and uniq syntax may differ)
+
+Q. How can I list messages with a subject of "Failure Notice" that
+   are 18+ hours old ?
+A. qmqtool -o 18 -f '^Subject: Failure Notice'
+
+Q. How can I expire messages with a subject of "Failure Notice" that
+   are have been queued for 18+ hours ?
+A. qmqtool -e -o 18 -f '^Subject: Failure Notice'
+
+Q. How can I do the previous question, but watch as it goes ?
+A. use -V: qmqtool -V -e -o 18 -f '^Subject: Failure Notice'
+
+Q. How can I make a list of just queued bounce messages ?
+A. qmqtool -f 'invoked for bounce'
+   will do a good job.
+
+Q. What is a "LWQ installation" ?
+A. I (and the general qmail community) recommend installing qmail as
+   per http://www.lifewithqmail.org/
+
+Q. How can I move qmail's queue to a different machine?
+A. Use the backup and restore feature:
+	1.  On old machine:
+	stop qmail-send
+   qmqtool -Bb
+   cd /var/qmail
+   tar -zcvf queue.tgz queue.backup/
+	copy or move queue.tgz to the new machine
+
+	2.  On new machine:
+	cd /var/qmail
+	tar -zxvf queue.tgz
+	stop qmail-send
+	qmqtool -Br
+	start qmail-send
+
+Q. How can I view message number 12345 ?
+A. qmqtool -v 12345
+
+Q. How can I view the whole message 12345, instead of the first 100 lines?
+A. qmqtool -wv 12345
+

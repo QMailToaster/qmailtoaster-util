@@ -1,0 +1,6 @@
+Except where noted below,
+this software is distributed under the GNU GENERAL PUBLIC LICENSE Version 2.
+See gpl.txt for further information.
+
+qmqtool is distributed under the Perl "Artistic License".
+See artistic.txt for further information.

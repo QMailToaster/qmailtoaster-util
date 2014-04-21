@@ -1,0 +1,93 @@
+queue_repair blurb
+==================
+
+Features include:
+
+  -written in Python; no compilation necessary.
+
+  -automatic, dynamic determination of UIDs and GIDs.
+
+  -automatic, dynamic determination of conf-split; can be overridden on
+  the commandline to change the conf-split of an existing queue without
+  running a parallel, temporary instance of qmail for queuelifetime.
+  Just recompile and stop qmail, run queue-repair, and restart qmail.
+
+  -automatic, dynamic determination of use of big-todo; can be overridden
+  on the commandline to change an existing queue as above.
+
+  -handles basic tasks like fixing a queue restored from backups, incorrect
+  ownership or permissions of directories and files, missing or extra
+  split subdirectories, unexpected files or other direntries, or creating
+  a valid queue from scratch.
+
+  -can run in repair or test (report-only) modes.  The default is test mode.
+
+  -can also be imported as a library from other Python scripts.  All
+  functionality is available for customized uses this way.
+
+  -licensed under the GNU General Public License version 2.
+
+Changelog for queue_repair.py
+=============================
+
+Please report bugs to the author at <pqt @ discworld.dyndns.org>
+
+Version 0.9.0
+22 October 2003
+
+  -many cleanups to the code
+  -mode of todo files was wrong in some cases when ext-todo was
+   in use or big-todo not in use; thanks to Thomas Palmieri and David Gartner
+   for their reports that helped me track this down.
+
+Version 0.8.6
+14 April 2002
+
+  -cleanups, better reporting of what queue_repair is doing.
+
+Version 0.8.5
+13 December 2001
+
+  -minor changes in reporting of ownership of files and directories
+  
+Version 0.8.4
+8 July 2001
+
+  -when force-creating a queue, ensure the user supplies a value for conf-split
+  and either --bigtodo or --no-bigtodo
+  -change --create to imply --repair as well
+
+Version 0.8.3
+7 July 2001
+
+  -enforce checking of prime conf-split.  Use --i-want-a-broken-conf-split to
+    force a non-prime split value in repair mode
+  -add explicit -h, --help options
+  -enforce checking of existence of basic queue directories to prevent 
+    accidental creation of queue in wrong place due to typos, etc.  Use
+    -c, --create to force creation of a new queue
+  -when creating a directory, force create missing parent(s)
+  -fix --no-bigtodo to allow conversion of big-todo queue to non-big-todo;
+    would previously auto-detect big-todo regardless
+  -improve forced conversion of non-big-todo queue to big-todo or vice versa,
+    and force change of conf-split for existing queues
+
+Version 0.8.2
+6 July 2001
+
+  -fix intd split issues without big-todo.  Thanks to Lou Hevly for the report.
+  -remove unused user and group from dictionary
+  -whitespace cleanups
+
+Version 0.8.0
+5 July 2001
+
+  -initial release
+
+To-Do List for queue_repair.py
+==============================
+
+Please report bugs to the author at <pqt @ discworld.dyndns.org>
+
+  -add documentation in addition to the built-in usage information
+  -check consistency of individual messages and their associated files
