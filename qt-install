@@ -27,6 +27,7 @@ service ntpd start
 a4_install_qmt_packages(){
 
 echo "$me - installing the QMailToaster packages ..."
+echo "$me - please be patient, especially with clamav and qmail ..."
 
 yum -y install \
       simscan \
