@@ -10,8 +10,4 @@ Installation Instructions (pre-wiki)
 # sh qt-bootstrap-2
 
 # qt-install
-  .) yum install man 
-  .) qt-install-repoforge
-  .) yum install simscan dovecot vqadmin qmailadmin (etc)
-  .) qt-mysql-secure-vpopmail
-  .) qt-install-dns-resolver
+(script will complete the installation)
