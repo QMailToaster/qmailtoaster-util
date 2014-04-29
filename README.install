@@ -2,11 +2,11 @@ Installation Instructions (pre-wiki)
 
 .) install CentOS minimal
 
-# curl https://raw.github.com/QMailToaster/qmailtoaster-util/master/qt-bootstrap-1 >qt-bootstrap-1
+# curl https://raw.githubusercontent.com/QMailToaster/qmailtoaster-util/master/qt-bootstrap-1 >qt-bootstrap-1
 # sh qt-bootstrap-1
 (system will reboot)
 
-# curl https://raw.github.com/QMailToaster/qmailtoaster-util/master/qt-bootstrap-2 >qt-bootstrap-2
+# curl https://raw.githubusercontent.com/QMailToaster/qmailtoaster-util/master/qt-bootstrap-2 >qt-bootstrap-2
 # sh qt-bootstrap-2
 
 # qt-install
